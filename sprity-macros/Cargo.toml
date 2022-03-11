@@ -1,0 +1,15 @@
+[package]
+name = "sprity-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+sprity-core = { path = "../sprity-core" }
+syn = "1.0.86"
+quote = "1.0.15"
+proc-macro2 = "1.0"
+proc-macro-error = "1.0.4"
+heck = "0.4.0"
