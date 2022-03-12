@@ -11,9 +11,9 @@ pub enum ParseError<'a> {
     /// happen is when running this code on a 16-bit system.
     DwordToUsize(Dword),
     /// This variant is used when the frame size is <4
-    InvalidFrameSize(usize),
+    InvalidFrameSize(Dword),
     /// This variant is used when the chunk size is <4
-    InvalidChunkSize(usize),
+    InvalidChunkSize(Dword),
     /// This variant is used when a String does not contain
     /// valid UTF-8 data and String::from_utf8 returned an error.
     FromUtf8Error(FromUtf8Error),

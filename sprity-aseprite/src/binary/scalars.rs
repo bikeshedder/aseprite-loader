@@ -49,9 +49,8 @@ pub fn long(input: &[u8]) -> ParseResult<Long> {
 /// Parse a DWORD as size information and make sure the
 /// parsed size no less than 4. The latter is important as
 /// this function is used when parsing frames and
-pub fn dword_size<'a>(input: &'a [u8], f: fn(usize) -> ParseError<'a>) -> ParseResult<'a, usize> {
+pub fn dword_size<'a>(input: &'a [u8], f: fn(Dword) -> ParseError<'a>) -> ParseResult<'a, Dword> {
     let (input, size) = dword(input)?;
-    let size = size.try_into().unwrap();
     if size >= 4 {
         Ok((input, size))
     } else {

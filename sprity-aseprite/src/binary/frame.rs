@@ -38,7 +38,7 @@ pub fn parse_frame(input: &[u8]) -> ParseResult<Frame> {
     };
     let chunk_count = chunk_count
         .try_into()
-        .expect("Could not convert DWORD (u32) into usize.");
+        .map_err(|_| nom::Err::Failure(ParseError::DwordToUsize(chunk_count)))?;
     let (input, chunks) = parse_chunks(input, chunk_count)?;
     Ok((rest, Frame { duration, chunks }))
 }
