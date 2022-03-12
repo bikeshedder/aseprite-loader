@@ -4,6 +4,7 @@ use super::{
     header::{parse_header, Header},
 };
 
+#[derive(Debug)]
 pub struct File<'a> {
     pub header: Header,
     pub frames: Vec<Frame<'a>>,

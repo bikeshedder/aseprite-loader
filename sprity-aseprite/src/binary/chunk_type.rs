@@ -1,11 +1,12 @@
 use nom::combinator::map;
+use strum_macros::FromRepr;
 
 use super::{
     errors::ParseResult,
     scalars::{word, Word},
 };
 
-#[derive(strum_macros::FromRepr)]
+#[derive(Debug, FromRepr)]
 pub enum ChunkType {
     Palette0004 = 0x0004,
     Palette0011 = 0x0011,

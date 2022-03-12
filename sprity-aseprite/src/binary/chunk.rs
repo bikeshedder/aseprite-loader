@@ -17,6 +17,7 @@ use super::{
     scalars::{dword, dword_size, word, Dword},
 };
 
+#[derive(Debug)]
 pub enum Chunk<'a> {
     Palette0004,
     Palette0011,

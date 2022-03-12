@@ -7,6 +7,7 @@ use crate::binary::{
     scalars::{byte, dword, parse_string, word, Byte, Dword, Word},
 };
 
+#[derive(Debug)]
 pub struct LayerChunk {
     pub flags: LayerFlags,
     pub layer_type: LayerType,
@@ -29,6 +30,7 @@ bitflags! {
     }
 }
 
+#[derive(Debug)]
 pub enum LayerType {
     Normal,
     Group,

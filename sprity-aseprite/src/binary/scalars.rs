@@ -17,6 +17,8 @@ pub type Word = u16;
 pub type Short = i16;
 pub type Dword = u32;
 pub type Long = i32;
+
+#[derive(Debug)]
 pub struct Fixed(u16, u16);
 
 use super::errors::{ParseError, ParseResult};

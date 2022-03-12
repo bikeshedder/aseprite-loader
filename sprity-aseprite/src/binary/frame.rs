@@ -14,6 +14,7 @@ use super::{
     scalars::{dword, word, Dword},
 };
 
+#[derive(Debug)]
 pub struct Frame<'a> {
     pub duration: Word,
     pub chunks: Vec<Chunk<'a>>,

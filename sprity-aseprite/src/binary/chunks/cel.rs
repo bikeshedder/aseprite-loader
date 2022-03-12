@@ -6,6 +6,7 @@ use crate::binary::{
     scalars::{byte, dword, short, word, Byte, Dword, Short, Word},
 };
 
+#[derive(Debug)]
 pub struct CelChunk<'a> {
     /// Layer index (see NOTE.2)
     layer_index: Word,
@@ -24,7 +25,7 @@ pub struct CelChunk<'a> {
     cel_type_data: CelTypeData<'a>,
 }
 
-#[derive(FromRepr)]
+#[derive(Debug, FromRepr)]
 pub enum CelType {
     RawImageData,
     LinkedCel,
@@ -39,6 +40,7 @@ impl From<Word> for CelType {
     }
 }
 
+#[derive(Debug)]
 pub enum CelTypeData<'a> {
     RawImageData {
         /// Width in pixels

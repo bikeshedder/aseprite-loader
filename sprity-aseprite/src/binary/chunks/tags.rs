@@ -10,11 +10,13 @@ use crate::binary::{
     scalars::{byte, parse_string, word, Byte, Word},
 };
 
+#[derive(Debug)]
 pub struct TagsChunk {
     tags: Vec<Tag>,
 }
 
 #[allow(deprecated)]
+#[derive(Debug)]
 pub struct Tag {
     from_frame: Word,
     to_frame: Word,
@@ -24,7 +26,7 @@ pub struct Tag {
     name: String,
 }
 
-#[derive(FromRepr)]
+#[derive(FromRepr, Debug)]
 enum AnimationDirection {
     Forward,
     Reverse,

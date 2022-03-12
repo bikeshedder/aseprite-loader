@@ -5,6 +5,7 @@ use crate::binary::{
     scalars::{dword, fixed, Dword, Fixed},
 };
 
+#[derive(Debug)]
 pub struct CelExtraChunk<'a> {
     flags: CelExtraFlags,
     precise_x_position: Fixed,
