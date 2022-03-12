@@ -6,7 +6,11 @@
 //! Therefore the parser uses the same types making it easy to
 //! compare it to the specification.
 
-use nom::number::complete::{le_i16, le_i32, le_u16, le_u32, le_u8};
+use nom::{
+    bytes::complete::take,
+    combinator::{flat_map, map_res},
+    number::complete::{le_i16, le_i32, le_u16, le_u32, le_u8},
+};
 
 pub type Byte = u8;
 pub type Word = u16;
@@ -14,7 +18,6 @@ pub type Short = i16;
 pub type Dword = u32;
 pub type Long = i32;
 pub struct Fixed(i64, i64);
-// FIXME what about String, Pixel and Tile?
 
 use super::errors::{ParseError, ParseResult};
 
@@ -54,4 +57,10 @@ pub fn dword_size<'a>(input: &'a [u8], f: fn(usize) -> ParseError<'a>) -> ParseR
     } else {
         Err(nom::Err::Failure(f(size)))
     }
+}
+
+pub fn parse_string(input: &[u8]) -> ParseResult<String> {
+    map_res(flat_map(word, take), |data| {
+        String::from_utf8(data.to_vec())
+    })(input)
 }

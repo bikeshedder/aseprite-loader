@@ -10,6 +10,7 @@ use nom::{
 pub mod blend_mode;
 pub mod chunk;
 pub mod chunk_type;
+pub mod chunks;
 pub mod color_depth;
 pub mod errors;
 pub mod file;
