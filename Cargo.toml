@@ -4,11 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sprity-aseprite = { path = "./sprity-aseprite" }
 sprity-macros = { path = "./sprity-macros" }
 sprity-core = { path = "./sprity-core" }
 
 [workspace]
 members = [
-    "sprity-macros",
+    "sprity-aseprite",
     "sprity-core",
+    "sprity-macros",
 ]
