@@ -17,7 +17,7 @@ pub type Word = u16;
 pub type Short = i16;
 pub type Dword = u32;
 pub type Long = i32;
-pub struct Fixed(i64, i64);
+pub struct Fixed(u16, u16);
 
 use super::errors::{ParseError, ParseResult};
 
@@ -62,4 +62,10 @@ pub fn parse_string(input: &[u8]) -> ParseResult<String> {
     map_res(flat_map(word, take), |data| {
         String::from_utf8(data.to_vec())
     })(input)
+}
+
+pub fn fixed(input: &[u8]) -> ParseResult<Fixed> {
+    let (input, low) = le_u16(input)?;
+    let (input, high) = le_u16(input)?;
+    Ok((input, Fixed(high, low)))
 }
