@@ -5,8 +5,8 @@ use super::{
 };
 
 pub struct File<'a> {
-    header: Header,
-    frames: Vec<Frame<'a>>,
+    pub header: Header,
+    pub frames: Vec<Frame<'a>>,
 }
 
 pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {

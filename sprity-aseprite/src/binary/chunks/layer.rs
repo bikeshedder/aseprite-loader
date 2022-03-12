@@ -80,3 +80,24 @@ pub fn parse_layer_chunk(input: &[u8]) -> ParseResult<LayerChunk> {
         },
     ))
 }
+
+#[test]
+fn test_layers() {
+    use crate::binary::{chunk::Chunk, file::parse_file};
+    let input = std::fs::read("./tests/layers.aseprite").unwrap();
+    let file = parse_file(&input).unwrap();
+    assert_eq!(file.frames.len(), 1);
+    assert_eq!(file.frames[0].duration, 100);
+    let layers = file.frames[0]
+        .chunks
+        .iter()
+        .filter_map(|chunk| match chunk {
+            Chunk::Layer(layer) => Some(layer),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(layers.len(), 3);
+    assert_eq!(layers[0].name, "Layer 1");
+    assert_eq!(layers[1].name, "Layer 2");
+    assert_eq!(layers[2].name, "Layer 3");
+}
