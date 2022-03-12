@@ -14,9 +14,9 @@ use super::{
     scalars::{dword, word, Dword},
 };
 
-pub struct Frame {
+pub struct Frame<'a> {
     pub duration: Word,
-    pub chunks: Vec<Chunk>,
+    pub chunks: Vec<Chunk<'a>>,
 }
 
 const FRAME_MAGIC_NUMBER: [u8; 2] = 0xF1FAu16.to_le_bytes();

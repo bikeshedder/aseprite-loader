@@ -4,9 +4,9 @@ use super::{
     header::{parse_header, Header},
 };
 
-pub struct File {
+pub struct File<'a> {
     header: Header,
-    frames: Vec<Frame>,
+    frames: Vec<Frame<'a>>,
 }
 
 pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
