@@ -12,6 +12,7 @@ use super::{
         cel_extra::{parse_cel_extra_chunk, CelExtraChunk},
         layer::{parse_layer_chunk, LayerChunk},
         tags::{parse_tags_chunk, TagsChunk},
+        user_data::{parse_user_data_chunk, UserDataChunk},
     },
     errors::{ParseError, ParseResult},
     scalars::{dword, dword_size, word, Dword},
@@ -25,6 +26,7 @@ pub enum Chunk<'a> {
     Cel(CelChunk<'a>),
     CelExtra(CelExtraChunk<'a>),
     Tags(TagsChunk),
+    UserData(UserDataChunk),
     NotImplemented(ChunkType),
     Unsupported(u16),
 }
@@ -43,8 +45,15 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
         Ok(ChunkType::Layer) => Chunk::Layer(parse_layer_chunk(chunk_data)?.1),
         Ok(ChunkType::Cel) => Chunk::Cel(parse_cel_chunk(chunk_data)?.1),
         Ok(ChunkType::CelExtra) => Chunk::CelExtra(parse_cel_extra_chunk(chunk_data)?.1),
+        // TODO Color Profile Chunk
+        // TODO External Files Chunk
+        // TODO Mask Chunk
+        // TODO Path Chunk
         Ok(ChunkType::Tags) => Chunk::Tags(parse_tags_chunk(chunk_data)?.1),
-        // FIXME implement more chunks
+        // TODO Palette Chunk
+        Ok(ChunkType::UserData) => Chunk::UserData(parse_user_data_chunk(chunk_data)?.1),
+        // TODO Slice Chunk
+        // TODO Tileset Chunk
         Ok(chunk_type) => Chunk::NotImplemented(chunk_type),
         Err(chunk_type) => Chunk::Unsupported(chunk_type),
     };

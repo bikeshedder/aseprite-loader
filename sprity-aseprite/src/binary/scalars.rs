@@ -10,6 +10,7 @@ use nom::{
     bytes::complete::take,
     combinator::{flat_map, map_res},
     number::complete::{le_i16, le_i32, le_u16, le_u32, le_u8},
+    sequence::tuple,
 };
 
 pub type Byte = u8;
@@ -20,6 +21,14 @@ pub type Long = i32;
 
 #[derive(Debug)]
 pub struct Fixed(u16, u16);
+
+#[derive(Debug)]
+pub struct Color {
+    red: u8,
+    green: u8,
+    blue: u8,
+    alpha: u8,
+}
 
 use super::errors::{ParseError, ParseResult};
 
@@ -70,4 +79,20 @@ pub fn fixed(input: &[u8]) -> ParseResult<Fixed> {
     let (input, low) = le_u16(input)?;
     let (input, high) = le_u16(input)?;
     Ok((input, Fixed(high, low)))
+}
+
+pub fn parse_color(input: &[u8]) -> ParseResult<Color> {
+    let (input, red) = byte(input)?;
+    let (input, green) = byte(input)?;
+    let (input, blue) = byte(input)?;
+    let (input, alpha) = byte(input)?;
+    Ok((
+        input,
+        Color {
+            red,
+            green,
+            blue,
+            alpha,
+        },
+    ))
 }
