@@ -11,7 +11,7 @@ use super::{
     chunk::Chunk,
     errors::{ParseError, ParseResult},
     scalars::Word,
-    scalars::{dword, word, Dword},
+    scalars::{dword, parse_dword_as_usize, word, Dword},
 };
 
 #[derive(Debug)]
@@ -33,13 +33,10 @@ pub fn parse_frame(input: &[u8]) -> ParseResult<Frame> {
     let (input, chunk_count) = word(input)?;
     let (input, duration) = word(input)?;
     let (input, _) = take(2usize)(input)?;
-    let (input, chunk_count) = match dword(input)? {
-        (input, 0) => (input, chunk_count as Dword),
+    let (input, chunk_count) = match parse_dword_as_usize(input)? {
+        (input, 0) => (input, chunk_count.into()),
         (input, chunk_count) => (input, chunk_count),
     };
-    let chunk_count = chunk_count
-        .try_into()
-        .map_err(|_| nom::Err::Failure(ParseError::DwordToUsize(chunk_count)))?;
     let (input, chunks) = parse_chunks(input, chunk_count)?;
     Ok((rest, Frame { duration, chunks }))
 }

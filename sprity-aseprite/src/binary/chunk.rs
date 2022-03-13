@@ -11,6 +11,7 @@ use super::{
         cel::{parse_cel_chunk, CelChunk},
         cel_extra::{parse_cel_extra_chunk, CelExtraChunk},
         layer::{parse_layer_chunk, LayerChunk},
+        palette::{parse_palette_chunk, PaletteChunk},
         tags::{parse_tags_chunk, TagsChunk},
         user_data::{parse_user_data_chunk, UserDataChunk},
     },
@@ -26,6 +27,7 @@ pub enum Chunk<'a> {
     Cel(CelChunk<'a>),
     CelExtra(CelExtraChunk<'a>),
     Tags(TagsChunk<'a>),
+    Palette(PaletteChunk<'a>),
     UserData(UserDataChunk<'a>),
     NotImplemented(ChunkType),
     Unsupported(u16),
@@ -50,7 +52,7 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
         // TODO Mask Chunk
         // TODO Path Chunk
         Ok(ChunkType::Tags) => Chunk::Tags(parse_tags_chunk(chunk_data)?.1),
-        // TODO Palette Chunk
+        Ok(ChunkType::Palette) => Chunk::Palette(parse_palette_chunk(chunk_data)?.1),
         Ok(ChunkType::UserData) => Chunk::UserData(parse_user_data_chunk(chunk_data)?.1),
         // TODO Slice Chunk
         // TODO Tileset Chunk
