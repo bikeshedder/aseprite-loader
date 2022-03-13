@@ -10,6 +10,7 @@ use super::{
     chunks::{
         cel::{parse_cel_chunk, CelChunk},
         cel_extra::{parse_cel_extra_chunk, CelExtraChunk},
+        color_profile::{parse_color_profile, ColorProfileChunk},
         layer::{parse_layer_chunk, LayerChunk},
         palette::{parse_palette_chunk, PaletteChunk},
         tags::{parse_tags_chunk, TagsChunk},
@@ -26,6 +27,9 @@ pub enum Chunk<'a> {
     Layer(LayerChunk<'a>),
     Cel(CelChunk<'a>),
     CelExtra(CelExtraChunk<'a>),
+    ColorProfile(ColorProfileChunk<'a>),
+    Mask,
+    Path,
     Tags(TagsChunk<'a>),
     Palette(PaletteChunk<'a>),
     UserData(UserDataChunk<'a>),
@@ -47,10 +51,10 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
         Ok(ChunkType::Layer) => Chunk::Layer(parse_layer_chunk(chunk_data)?.1),
         Ok(ChunkType::Cel) => Chunk::Cel(parse_cel_chunk(chunk_data)?.1),
         Ok(ChunkType::CelExtra) => Chunk::CelExtra(parse_cel_extra_chunk(chunk_data)?.1),
-        // TODO Color Profile Chunk
+        Ok(ChunkType::ColorProfile) => Chunk::ColorProfile(parse_color_profile(chunk_data)?.1),
         // TODO External Files Chunk
-        // TODO Mask Chunk
-        // TODO Path Chunk
+        Ok(ChunkType::Mask) => Chunk::Mask,
+        Ok(ChunkType::Path) => Chunk::Path,
         Ok(ChunkType::Tags) => Chunk::Tags(parse_tags_chunk(chunk_data)?.1),
         Ok(ChunkType::Palette) => Chunk::Palette(parse_palette_chunk(chunk_data)?.1),
         Ok(ChunkType::UserData) => Chunk::UserData(parse_user_data_chunk(chunk_data)?.1),
