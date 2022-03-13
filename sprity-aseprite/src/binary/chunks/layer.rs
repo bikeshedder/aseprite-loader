@@ -8,13 +8,13 @@ use crate::binary::{
 };
 
 #[derive(Debug)]
-pub struct LayerChunk {
+pub struct LayerChunk<'a> {
     pub flags: LayerFlags,
     pub layer_type: LayerType,
     pub child_level: Word,
     pub blend_mode: BlendMode,
     pub opacity: Byte,
-    pub name: String,
+    pub name: &'a str,
     pub tileset_index: Option<Dword>,
 }
 

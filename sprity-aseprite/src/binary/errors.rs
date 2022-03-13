@@ -1,4 +1,4 @@
-use std::{fmt, string::FromUtf8Error};
+use std::{fmt, str::Utf8Error};
 
 use nom::{error::FromExternalError, IResult};
 
@@ -14,9 +14,9 @@ pub enum ParseError<'a> {
     InvalidFrameSize(Dword),
     /// This variant is used when the chunk size is <4
     InvalidChunkSize(Dword),
-    /// This variant is used when a String does not contain
-    /// valid UTF-8 data and String::from_utf8 returned an error.
-    FromUtf8Error(FromUtf8Error),
+    /// This variant is used when a string does not contain
+    /// valid UTF-8 data and `str::from_utf8` returned an error.
+    Utf8Error(Utf8Error),
     /// This variant is used when the nom combinators return
     /// an error.
     Nom(nom::error::Error<&'a [u8]>),
@@ -33,9 +33,9 @@ impl<'a> nom::error::ParseError<&'a [u8]> for ParseError<'a> {
     }
 }
 
-impl<'a> nom::error::FromExternalError<&'a [u8], FromUtf8Error> for ParseError<'a> {
-    fn from_external_error(input: &'a [u8], kind: nom::error::ErrorKind, e: FromUtf8Error) -> Self {
-        ParseError::FromUtf8Error(e)
+impl<'a> nom::error::FromExternalError<&'a [u8], Utf8Error> for ParseError<'a> {
+    fn from_external_error(input: &'a [u8], kind: nom::error::ErrorKind, e: Utf8Error) -> Self {
+        ParseError::Utf8Error(e)
     }
 }
 

@@ -69,10 +69,8 @@ pub fn dword_size<'a>(input: &'a [u8], f: fn(Dword) -> ParseError<'a>) -> ParseR
     }
 }
 
-pub fn parse_string(input: &[u8]) -> ParseResult<String> {
-    map_res(flat_map(word, take), |data| {
-        String::from_utf8(data.to_vec())
-    })(input)
+pub fn parse_string<'a>(input: &'a [u8]) -> ParseResult<&'a str> {
+    map_res(flat_map(word, take), std::str::from_utf8)(input)
 }
 
 pub fn fixed(input: &[u8]) -> ParseResult<Fixed> {

@@ -11,19 +11,19 @@ use crate::binary::{
 };
 
 #[derive(Debug)]
-pub struct TagsChunk {
-    tags: Vec<Tag>,
+pub struct TagsChunk<'a> {
+    tags: Vec<Tag<'a>>,
 }
 
 #[allow(deprecated)]
 #[derive(Debug)]
-pub struct Tag {
+pub struct Tag<'a> {
     from_frame: Word,
     to_frame: Word,
     animation_direction: AnimationDirection,
     #[deprecated]
     color: [u8; 3],
-    name: String,
+    name: &'a str,
 }
 
 #[derive(FromRepr, Debug)]

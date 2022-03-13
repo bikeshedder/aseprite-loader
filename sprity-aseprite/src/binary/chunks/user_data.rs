@@ -14,8 +14,8 @@ bitflags! {
 }
 
 #[derive(Debug)]
-pub struct UserDataChunk {
-    text: Option<String>,
+pub struct UserDataChunk<'a> {
+    text: Option<&'a str>,
     color: Option<Color>,
 }
 

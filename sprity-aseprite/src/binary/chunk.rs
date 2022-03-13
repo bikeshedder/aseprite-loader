@@ -22,11 +22,11 @@ use super::{
 pub enum Chunk<'a> {
     Palette0004,
     Palette0011,
-    Layer(LayerChunk),
+    Layer(LayerChunk<'a>),
     Cel(CelChunk<'a>),
     CelExtra(CelExtraChunk<'a>),
-    Tags(TagsChunk),
-    UserData(UserDataChunk),
+    Tags(TagsChunk<'a>),
+    UserData(UserDataChunk<'a>),
     NotImplemented(ChunkType),
     Unsupported(u16),
 }
