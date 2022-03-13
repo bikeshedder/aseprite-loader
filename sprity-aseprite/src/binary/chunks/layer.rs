@@ -1,5 +1,5 @@
 use bitflags::bitflags;
-use nom::bytes::complete::take;
+use nom::{bytes::complete::take, combinator::cond};
 
 use crate::binary::{
     blend_mode::BlendMode,
@@ -62,13 +62,7 @@ pub fn parse_layer_chunk(input: &[u8]) -> ParseResult<LayerChunk> {
     let (input, opacity) = byte(input)?;
     let (input, _) = take(3usize)(input)?;
     let (input, name) = parse_string(input)?;
-    let (input, tileset_index) = match layer_type {
-        LayerType::Tilemap => {
-            let (input, tileset_index) = dword(input)?;
-            (input, Some(tileset_index))
-        }
-        _ => (input, None),
-    };
+    let (input, tileset_index) = cond(matches!(layer_type, LayerType::Tilemap), dword)(input)?;
     Ok((
         input,
         LayerChunk {
