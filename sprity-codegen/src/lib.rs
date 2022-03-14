@@ -102,15 +102,22 @@ fn gen_sprite_mod(file: &SpriteMeta) -> TokenStream {
         .map(|layer| format_ident!("{}", layer.to_upper_camel_case()))
         .collect::<Vec<_>>();
     let layer_count = layer_idents.len();
+    let layer_flags = file
+        .layers
+        .iter()
+        .map(|layer| format_ident!("{}", layer.to_snake_case()))
+        .collect::<Vec<_>>();
     quote! {
-
         pub mod #mod_ident {
 
             pub const NAME: &str = #name;
             pub const TAGS: [super :: Tag; #tag_count] = [ #(super :: Tag :: #tag_idents , )* ];
             pub const LAYERS: [super :: Layer; #layer_count] = [ #(super :: Layer :: #layer_idents , )* ];
 
-            pub struct Sprite {}
+            pub struct Sprite {
+                pub tag: Tag,
+                pub layers: Layers,
+            }
             impl Sprite {
                 fn sprite(self) -> super :: Sprite {
                     super :: Sprite :: #sprite_ident (self)
@@ -182,6 +189,10 @@ fn gen_sprite_mod(file: &SpriteMeta) -> TokenStream {
                         _ => Err(())
                     }
                 }
+            }
+            #[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+            pub struct Layers {
+                #( pub #layer_flags : bool , )*
             }
         }
     }

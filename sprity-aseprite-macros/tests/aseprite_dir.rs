@@ -10,9 +10,21 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let sprite = sprites::Sprite::Player(sprites::player::Sprite {});
+        let sprite = sprites::Sprite::Player(sprites::player::Sprite {
+            tag: sprites::player::Tag::WalkRight,
+            layers: sprites::player::Layers {
+                base: true,
+                ..Default::default()
+            },
+        });
         assert_eq!(sprite.name(), "player");
-        let player = sprites::player::Sprite {};
+        let player = sprites::player::Sprite {
+            tag: sprites::player::Tag::WalkRight,
+            layers: sprites::player::Layers {
+                base: true,
+                ..Default::default()
+            },
+        };
         assert_eq!(player.name(), "player");
         let tag = sprites::player::Tag::WalkRight;
         assert_eq!(tag.index(), 2);
