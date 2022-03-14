@@ -10,7 +10,6 @@ use nom::{
     bytes::complete::take,
     combinator::{flat_map, map_res},
     number::complete::{le_i16, le_i32, le_u16, le_u32, le_u8},
-    sequence::tuple,
 };
 
 pub type Byte = u8;
@@ -24,10 +23,10 @@ pub struct Fixed(u16, u16);
 
 #[derive(Debug)]
 pub struct Color {
-    red: u8,
-    green: u8,
-    blue: u8,
-    alpha: u8,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub alpha: u8,
 }
 
 use super::errors::{ParseError, ParseResult};

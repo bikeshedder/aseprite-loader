@@ -1,9 +1,8 @@
 use std::env;
 use std::path::PathBuf;
 
-use heck::ToUpperCamelCase;
 use proc_macro_error::proc_macro_error;
-use syn::{parse::Parse, parse_macro_input, Expr, LitStr};
+use syn::{parse::Parse, parse_macro_input, LitStr};
 
 extern crate proc_macro;
 
@@ -16,25 +15,6 @@ impl Parse for AsepriteDeclaration {
         Ok(AsepriteDeclaration {
             path: input.parse()?,
         })
-    }
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct AsepriteFile {
-    name: String,
-    path: PathBuf,
-    tags: Vec<String>,
-    layers: Vec<String>,
-}
-
-impl AsepriteFile {
-    fn load(name: &str, path: &PathBuf) -> Self {
-        Self {
-            name: name.to_upper_camel_case(),
-            path: path.to_owned(),
-            tags: vec![],
-            layers: vec![],
-        }
     }
 }
 

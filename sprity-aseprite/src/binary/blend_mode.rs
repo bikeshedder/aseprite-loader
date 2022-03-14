@@ -1,8 +1,7 @@
-use nom::combinator::{map, map_opt, map_res};
 use strum_macros::FromRepr;
 
 use super::{
-    errors::{ParseError, ParseResult},
+    errors::ParseResult,
     scalars::{word, Word},
 };
 

@@ -1,6 +1,6 @@
 use nom::{
     bytes::complete::{tag, take},
-    combinator::{all_consuming, complete, flat_map},
+    combinator::{all_consuming, complete},
     multi::many1,
 };
 
@@ -11,7 +11,7 @@ use super::{
     chunk::Chunk,
     errors::{ParseError, ParseResult},
     scalars::Word,
-    scalars::{dword, parse_dword_as_usize, word, Dword},
+    scalars::{parse_dword_as_usize, word},
 };
 
 #[derive(Debug)]
@@ -37,6 +37,6 @@ pub fn parse_frame(input: &[u8]) -> ParseResult<Frame> {
         (input, 0) => (input, chunk_count.into()),
         (input, chunk_count) => (input, chunk_count),
     };
-    let (input, chunks) = parse_chunks(input, chunk_count)?;
+    let (_, chunks) = parse_chunks(input, chunk_count)?;
     Ok((rest, Frame { duration, chunks }))
 }

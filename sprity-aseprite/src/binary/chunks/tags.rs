@@ -1,8 +1,4 @@
-use nom::{
-    bytes::complete::take,
-    combinator::{flat_map, map},
-    multi::count,
-};
+use nom::{bytes::complete::take, multi::count};
 use strum_macros::FromRepr;
 
 use crate::binary::{

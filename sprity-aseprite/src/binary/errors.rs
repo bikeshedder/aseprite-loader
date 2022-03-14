@@ -1,7 +1,6 @@
-use std::{fmt, str::Utf8Error};
+use std::str::Utf8Error;
 
-use nom::{error::FromExternalError, IResult};
-use sprity_core::LoadDirError;
+use nom::IResult;
 
 use super::scalars::Dword;
 
@@ -35,7 +34,7 @@ impl<'a> nom::error::ParseError<&'a [u8]> for ParseError<'a> {
 }
 
 impl<'a> nom::error::FromExternalError<&'a [u8], Utf8Error> for ParseError<'a> {
-    fn from_external_error(input: &'a [u8], kind: nom::error::ErrorKind, e: Utf8Error) -> Self {
+    fn from_external_error(_input: &'a [u8], _kind: nom::error::ErrorKind, e: Utf8Error) -> Self {
         ParseError::Utf8Error(e)
     }
 }

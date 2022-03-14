@@ -3,7 +3,7 @@ use nom::combinator::cond;
 
 use crate::binary::{
     errors::ParseResult,
-    scalars::{dword, parse_color, parse_string, Color, Dword, Word},
+    scalars::{dword, parse_color, parse_string, Color, Dword},
 };
 
 bitflags! {
@@ -15,8 +15,8 @@ bitflags! {
 
 #[derive(Debug)]
 pub struct UserDataChunk<'a> {
-    text: Option<&'a str>,
-    color: Option<Color>,
+    pub text: Option<&'a str>,
+    pub color: Option<Color>,
 }
 
 pub fn parse_user_data_chunk(input: &[u8]) -> ParseResult<UserDataChunk> {

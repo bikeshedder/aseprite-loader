@@ -1,5 +1,5 @@
 use super::{
-    errors::{ParseError, ParseResult},
+    errors::ParseError,
     frame::{parse_frames, Frame},
     header::{parse_header, Header},
 };
@@ -10,7 +10,7 @@ pub struct File<'a> {
     pub frames: Vec<Frame<'a>>,
 }
 
-pub fn parse_file<'a>(input: &'a [u8]) -> Result<File<'a>, nom::Err<ParseError<'a>>> {
+pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
     let (input, header) = parse_header(input)?;
     let (_, frames) = parse_frames(input)?;
     Ok(File { header, frames })

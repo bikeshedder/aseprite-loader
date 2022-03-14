@@ -71,7 +71,7 @@ pub fn parse_header(input: &[u8]) -> ParseResult<Header> {
     let (input, grid_y) = short(input)?;
     let (input, grid_width) = word(input)?;
     let (input, grid_height) = word(input)?;
-    let (input, future) = take(84usize)(input)?;
+    let (input, _) = take(84usize)(input)?;
     // Sanity check: Did we consume all 128 bytes?
     assert_eq!(input.len(), 0);
     #[allow(deprecated)]

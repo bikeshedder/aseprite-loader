@@ -1,19 +1,19 @@
 use bitflags::bitflags;
 use nom::{
     bytes::complete::take,
-    combinator::{cond, flat_map, map},
+    combinator::{flat_map, map},
 };
 use strum_macros::FromRepr;
 
 use crate::binary::{
     errors::ParseResult,
-    scalars::{dword, dword_size, fixed, word, Fixed, Word},
+    scalars::{dword, fixed, word, Fixed, Word},
 };
 
 #[derive(Debug)]
 pub struct ColorProfileChunk<'a> {
-    fixed_gamma: Option<Fixed>,
-    profile: ColorProfile<'a>,
+    pub fixed_gamma: Option<Fixed>,
+    pub profile: ColorProfile<'a>,
 }
 
 #[derive(FromRepr)]

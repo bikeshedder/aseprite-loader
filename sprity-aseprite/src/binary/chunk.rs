@@ -1,12 +1,7 @@
-use nom::{
-    bytes::complete::take,
-    combinator::{flat_map, map},
-    multi::count,
-};
-
-use crate::binary::chunk_type::{parse_chunk_type, ChunkType};
+use nom::{bytes::complete::take, multi::count};
 
 use super::{
+    chunk_type::{parse_chunk_type, ChunkType},
     chunks::{
         cel::{parse_cel_chunk, CelChunk},
         cel_extra::{parse_cel_extra_chunk, CelExtraChunk},
@@ -17,7 +12,7 @@ use super::{
         user_data::{parse_user_data_chunk, UserDataChunk},
     },
     errors::{ParseError, ParseResult},
-    scalars::{dword, dword_size, word, Dword},
+    scalars::dword_size,
 };
 
 #[derive(Debug)]

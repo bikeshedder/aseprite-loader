@@ -7,12 +7,12 @@ use crate::binary::{
 
 #[derive(Debug)]
 pub struct CelExtraChunk<'a> {
-    flags: CelExtraFlags,
-    precise_x_position: Fixed,
-    precise_y_position: Fixed,
-    width_of_the_cel: Fixed,
-    height_of_the_cel: Fixed,
-    future: &'a [u8],
+    pub flags: CelExtraFlags,
+    pub precise_x_position: Fixed,
+    pub precise_y_position: Fixed,
+    pub width_of_the_cel: Fixed,
+    pub height_of_the_cel: Fixed,
+    pub future: &'a [u8],
 }
 
 bitflags! {

@@ -1,10 +1,7 @@
 use nom::combinator::map;
 use strum_macros::FromRepr;
 
-use super::{
-    errors::ParseResult,
-    scalars::{word, Word},
-};
+use super::{errors::ParseResult, scalars::word};
 
 #[derive(Debug, FromRepr)]
 pub enum ChunkType {

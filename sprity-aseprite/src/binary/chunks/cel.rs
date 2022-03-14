@@ -9,20 +9,20 @@ use crate::binary::{
 #[derive(Debug)]
 pub struct CelChunk<'a> {
     /// Layer index (see NOTE.2)
-    layer_index: Word,
+    pub layer_index: Word,
     /// X position
-    x: Short,
+    pub x: Short,
     /// Y position
-    y: Short,
+    pub y: Short,
     /// Opacity level
-    opacity: Byte,
+    pub opacity: Byte,
     /// Cel Type
     /// 0 - Raw Image Data (unused, compressed image is preferred)
     /// 1 - Linked Cel
     /// 2 - Compressed Image
     /// 3 - Compressed Tilemap
-    cel_type: CelType,
-    cel_type_data: CelTypeData<'a>,
+    pub cel_type: CelType,
+    pub cel_type_data: CelTypeData<'a>,
 }
 
 #[derive(Debug, FromRepr)]
@@ -104,7 +104,7 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
             }
         }
         CelType::LinkedCel => {
-            let (input, frame_position) = word(input)?;
+            let (_, frame_position) = word(input)?;
             CelTypeData::LinkedCel { frame_position }
         }
         CelType::CompressedImage => {

@@ -1,7 +1,7 @@
 use strum_macros::FromRepr;
 
 use super::{
-    errors::{ParseError, ParseResult},
+    errors::ParseResult,
     scalars::{word, Word},
 };
 
@@ -17,7 +17,7 @@ pub enum ColorDepth {
 }
 
 impl ColorDepth {
-    fn bpp(&self) -> Word {
+    pub fn bpp(&self) -> Word {
         match self {
             Self::Rgba => 32,
             Self::Grayscale => 16,

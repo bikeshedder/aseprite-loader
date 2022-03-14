@@ -3,23 +3,20 @@ use nom::{bytes::complete::take, combinator::cond, multi::count};
 
 use crate::binary::{
     errors::ParseResult,
-    scalars::{
-        dword, dword_size, parse_color, parse_dword_as_usize, parse_string, word, Color, Dword,
-        Word,
-    },
+    scalars::{dword, parse_color, parse_dword_as_usize, parse_string, word, Color, Dword, Word},
 };
 
 #[derive(Debug)]
 pub struct PaletteChunk<'a> {
-    first_color_index: Dword,
-    last_color_index: Dword,
-    entries: Vec<PaletteEntry<'a>>,
+    pub first_color_index: Dword,
+    pub last_color_index: Dword,
+    pub entries: Vec<PaletteEntry<'a>>,
 }
 
 #[derive(Debug)]
 pub struct PaletteEntry<'a> {
-    color: Color,
-    name: Option<&'a str>,
+    pub color: Color,
+    pub name: Option<&'a str>,
 }
 
 bitflags! {
