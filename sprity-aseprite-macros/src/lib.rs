@@ -38,8 +38,11 @@ pub fn aseprite_dir(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let crate_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR").expect("No CARGO_MANIFEST_DIR in environment"),
     );
-    proc_macro::TokenStream::from(sprity_codegen::aseprite_dir(
-        &sprity_aseprite::binary::loader::BinaryLoader {},
-        &crate_dir.join(path.value()).as_path(),
-    ))
+    proc_macro::TokenStream::from(
+        sprity_codegen::aseprite_dir(
+            &sprity_aseprite::binary::loader::BinaryLoader {},
+            &crate_dir.join(path.value()).as_path(),
+        )
+        .unwrap(),
+    )
 }

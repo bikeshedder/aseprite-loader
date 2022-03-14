@@ -1,10 +1,9 @@
 use sprity_aseprite::binary::loader::BinaryLoader;
-use sprity_core::Loader;
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let loader = BinaryLoader {};
-    let meta = loader.load_dir_meta(&"../examples/assets")?;
-
-    println!("{:#?}", meta);
+    let assert_dir = "../examples/assets";
+    let code = sprity_codegen::aseprite_dir(&loader, &assert_dir)?;
+    println!("{}", code);
     Ok(())
 }

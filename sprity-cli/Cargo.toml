@@ -1,0 +1,9 @@
+[package]
+name = "sprity-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sprity-aseprite = { path = "../sprity-aseprite" }
+sprity-codegen = { path = "../sprity-codegen" }
+sprity-core = { path = "../sprity-core" }

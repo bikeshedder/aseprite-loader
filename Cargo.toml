@@ -12,5 +12,6 @@ members = [
     "sprity-aseprite",
     "sprity-aseprite-macros",
     "sprity-codegen",
+    "sprity-cli",
     "sprity-core",
 ]

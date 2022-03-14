@@ -14,6 +14,8 @@ pub enum LoadDirError {
     Io(#[from] io::Error),
     #[error("parsing of `{filename}` failed: {message}")]
     Parse { filename: String, message: String },
+    #[error("directory does not contain any {ext} files: {dir}")]
+    EmptyDirectory { ext: &'static str, dir: String },
     #[error("unknown error occured")]
     Other(#[from] Box<dyn std::error::Error>),
 }
