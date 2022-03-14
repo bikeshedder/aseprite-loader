@@ -1,6 +1,7 @@
 use std::{fmt, str::Utf8Error};
 
 use nom::{error::FromExternalError, IResult};
+use sprity_core::LoadDirError;
 
 use super::scalars::Dword;
 

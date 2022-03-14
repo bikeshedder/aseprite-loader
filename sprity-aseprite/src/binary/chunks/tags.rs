@@ -12,22 +12,22 @@ use crate::binary::{
 
 #[derive(Debug)]
 pub struct TagsChunk<'a> {
-    tags: Vec<Tag<'a>>,
+    pub tags: Vec<Tag<'a>>,
 }
 
 #[allow(deprecated)]
 #[derive(Debug)]
 pub struct Tag<'a> {
-    from_frame: Word,
-    to_frame: Word,
-    animation_direction: AnimationDirection,
+    pub from_frame: Word,
+    pub to_frame: Word,
+    pub animation_direction: AnimationDirection,
     #[deprecated]
-    color: [u8; 3],
-    name: &'a str,
+    pub color: [u8; 3],
+    pub name: &'a str,
 }
 
 #[derive(FromRepr, Debug)]
-enum AnimationDirection {
+pub enum AnimationDirection {
     Forward,
     Reverse,
     PingPong,

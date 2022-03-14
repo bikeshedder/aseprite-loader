@@ -6,7 +6,7 @@ use super::{
     scalars::{word, Word},
 };
 
-#[derive(Debug, Eq, PartialEq, FromRepr)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, FromRepr)]
 pub enum BlendMode {
     Normal,
     Multiply,
