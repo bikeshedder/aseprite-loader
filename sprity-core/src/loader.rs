@@ -2,10 +2,11 @@ use std::{io, path::Path};
 
 use thiserror::Error;
 
-use crate::meta::SpriteMeta;
+use crate::{meta::SpriteMeta, SpriteSheet};
 
 pub trait Loader {
     fn load_dir_meta(&self, dir: &dyn AsRef<Path>) -> Result<Vec<SpriteMeta>, LoadDirError>;
+    fn load_dir(&self, dir: &dyn AsRef<Path>) -> Result<Vec<SpriteSheet>, LoadDirError>;
 }
 
 #[derive(Error, Debug)]

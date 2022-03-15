@@ -8,7 +8,7 @@ use super::{
 /// Color depth (bits per pixel)
 /// 16 bpp = Grayscale
 /// 8 bpp = Indexed
-#[derive(Clone, Debug, Eq, PartialEq, FromRepr)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, FromRepr)]
 pub enum ColorDepth {
     Rgba,
     Grayscale,
