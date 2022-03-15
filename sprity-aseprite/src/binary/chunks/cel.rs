@@ -16,20 +16,20 @@ pub struct CelChunk<'a> {
     pub y: Short,
     /// Opacity level
     pub opacity: Byte,
-    /// Cel Type
-    /// 0 - Raw Image Data (unused, compressed image is preferred)
-    /// 1 - Linked Cel
-    /// 2 - Compressed Image
-    /// 3 - Compressed Tilemap
-    pub cel_type: CelType,
-    pub cel_type_data: CelTypeData<'a>,
+    /// Cel Data
+    pub content: CelContent<'a>,
 }
 
 #[derive(Debug, FromRepr)]
-pub enum CelType {
+
+enum CelType {
+    /// 0 - Raw Image Data (unused, compressed image is preferred)
     RawImageData,
+    /// 1 - Linked Cel
     LinkedCel,
+    /// 2 - Compressed Image
     CompressedImage,
+    /// 3 - Compressed Tilemap
     CompressedTilemap,
     Unknown(Word),
 }
@@ -41,7 +41,7 @@ impl From<Word> for CelType {
 }
 
 #[derive(Debug)]
-pub enum CelTypeData<'a> {
+pub enum CelContent<'a> {
     RawImageData {
         /// Width in pixels
         width: Word,
@@ -93,11 +93,11 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
     let (input, cel_type) = word(input)?;
     let cel_type = CelType::from(cel_type);
     let (input, _) = take(7usize)(input)?;
-    let cel_type_data = match cel_type {
+    let content = match cel_type {
         CelType::RawImageData => {
             let (input, width) = word(input)?;
             let (input, height) = word(input)?;
-            CelTypeData::RawImageData {
+            CelContent::RawImageData {
                 width,
                 height,
                 data: input,
@@ -105,12 +105,12 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
         }
         CelType::LinkedCel => {
             let (_, frame_position) = word(input)?;
-            CelTypeData::LinkedCel { frame_position }
+            CelContent::LinkedCel { frame_position }
         }
         CelType::CompressedImage => {
             let (input, width) = word(input)?;
             let (input, height) = word(input)?;
-            CelTypeData::CompressedImage {
+            CelContent::CompressedImage {
                 width,
                 height,
                 data: input,
@@ -125,7 +125,7 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
             let (input, bitmask_x_flip) = dword(input)?;
             let (input, bitmask_90cw_rotation) = dword(input)?;
             let (input, _) = take(10usize)(input)?;
-            CelTypeData::CompressedTilemap {
+            CelContent::CompressedTilemap {
                 width,
                 height,
                 bits_per_tile,
@@ -136,7 +136,7 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
                 data: input,
             }
         }
-        CelType::Unknown(_) => CelTypeData::Unknown(input),
+        CelType::Unknown(_) => CelContent::Unknown(input),
     };
     Ok((
         &input[input.len()..],
@@ -145,8 +145,7 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
             x,
             y,
             opacity,
-            cel_type,
-            cel_type_data,
+            content,
         },
     ))
 }
