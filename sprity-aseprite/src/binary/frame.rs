@@ -9,6 +9,7 @@ use crate::binary::scalars::dword_size;
 use super::{
     chunk::parse_chunks,
     chunk::Chunk,
+    chunks::cel::CelChunk,
     errors::{ParseError, ParseResult},
     scalars::Word,
     scalars::{parse_dword_as_usize, word},
@@ -18,6 +19,18 @@ use super::{
 pub struct Frame<'a> {
     pub duration: Word,
     pub chunks: Vec<Chunk<'a>>,
+}
+
+impl<'a> Frame<'a> {
+    pub fn cels(&self) -> impl Iterator<Item = &CelChunk> {
+        self.chunks.iter().filter_map(|chunk| {
+            if let Chunk::Cel(cel) = chunk {
+                Some(cel)
+            } else {
+                None
+            }
+        })
+    }
 }
 
 const FRAME_MAGIC_NUMBER: [u8; 2] = 0xF1FAu16.to_le_bytes();

@@ -1,4 +1,6 @@
 use super::{
+    chunk::Chunk,
+    chunks::{layer::LayerChunk, tags::Tag},
     errors::ParseError,
     frame::{parse_frames, Frame},
     header::{parse_header, Header},
@@ -8,6 +10,28 @@ use super::{
 pub struct File<'a> {
     pub header: Header,
     pub frames: Vec<Frame<'a>>,
+}
+
+impl<'a> File<'a> {
+    pub fn layers(&self) -> impl Iterator<Item = &LayerChunk> {
+        self.frames.iter().flat_map(|frame| {
+            frame.chunks.iter().filter_map(|chunk| match chunk {
+                Chunk::Layer(chunk) => Some(chunk),
+                _ => None,
+            })
+        })
+    }
+    pub fn tags(&self) -> impl Iterator<Item = &Tag> {
+        self.frames
+            .iter()
+            .flat_map(|frame| {
+                frame.chunks.iter().filter_map(|chunk| match chunk {
+                    Chunk::Tags(chunk) => Some(&chunk.tags),
+                    _ => None,
+                })
+            })
+            .flat_map(|tags| tags.iter())
+    }
 }
 
 pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
