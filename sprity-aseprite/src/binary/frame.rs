@@ -4,7 +4,7 @@ use nom::{
     multi::many1,
 };
 
-use crate::binary::scalars::dword_size;
+use crate::binary::{chunks::cel::CelContent, scalars::dword_size};
 
 use super::{
     chunk::parse_chunks,
@@ -22,6 +22,7 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
+    #[must_use]
     pub fn cels(&self) -> impl Iterator<Item = &CelChunk> {
         self.chunks.iter().filter_map(|chunk| {
             if let Chunk::Cel(cel) = chunk {
@@ -29,6 +30,17 @@ impl<'a> Frame<'a> {
             } else {
                 None
             }
+        })
+    }
+    pub fn image_cels(&self) -> impl Iterator<Item = &CelChunk> {
+        self.cels().filter(|chunk| {
+            matches!(
+                chunk,
+                CelChunk {
+                    content: CelContent::RawImageData { .. } | CelContent::CompressedImage { .. },
+                    ..
+                }
+            )
         })
     }
 }

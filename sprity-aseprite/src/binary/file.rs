@@ -1,6 +1,12 @@
+use crate::binary::chunks::cel::CelContent;
+
 use super::{
     chunk::Chunk,
-    chunks::{layer::LayerChunk, tags::Tag},
+    chunks::{
+        cel::CelChunk,
+        layer::{LayerChunk, LayerType},
+        tags::Tag,
+    },
     errors::ParseError,
     frame::{parse_frames, Frame},
     header::{parse_header, Header},
@@ -13,14 +19,16 @@ pub struct File<'a> {
 }
 
 impl<'a> File<'a> {
-    pub fn layers(&self) -> impl Iterator<Item = &LayerChunk> {
+    #[must_use]
+    pub fn normal_layers(&self) -> impl Iterator<Item = &LayerChunk> {
         self.frames.iter().flat_map(|frame| {
             frame.chunks.iter().filter_map(|chunk| match chunk {
-                Chunk::Layer(chunk) => Some(chunk),
+                Chunk::Layer(chunk) if chunk.layer_type == LayerType::Normal => Some(chunk),
                 _ => None,
             })
         })
     }
+    #[must_use]
     pub fn tags(&self) -> impl Iterator<Item = &Tag> {
         self.frames
             .iter()
@@ -31,6 +39,13 @@ impl<'a> File<'a> {
                 })
             })
             .flat_map(|tags| tags.iter())
+    }
+    #[must_use]
+    pub fn image_cels(&self) -> impl Iterator<Item = (usize, &CelChunk)> {
+        self.frames
+            .iter()
+            .enumerate()
+            .flat_map(|(frame_index, frame)| frame.image_cels().map(move |cel| (frame_index, cel)))
     }
 }
 

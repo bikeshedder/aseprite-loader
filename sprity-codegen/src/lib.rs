@@ -4,7 +4,7 @@ use heck::{ToSnakeCase, ToUpperCamelCase};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use sprity_core::{LoadDirError, SpriteMeta};
+use sprity_core::{DynamicSpriteSheetMeta, LoadDirError};
 
 pub fn aseprite_dir(
     loader: &dyn sprity_core::Loader,
@@ -28,7 +28,7 @@ pub fn aseprite_dir(
     })
 }
 
-fn gen_enum(files: &[SpriteMeta]) -> TokenStream {
+fn gen_enum(files: &[DynamicSpriteSheetMeta]) -> TokenStream {
     let sprite_idents = files
         .iter()
         .map(|f| format_ident!("{}", f.name.to_upper_camel_case()))
@@ -86,7 +86,7 @@ fn gen_enum(files: &[SpriteMeta]) -> TokenStream {
     }
 }
 
-fn gen_sprite_mod(file: &SpriteMeta) -> TokenStream {
+fn gen_sprite_mod(file: &DynamicSpriteSheetMeta) -> TokenStream {
     let mod_ident = format_ident!("{}", file.name.to_snake_case());
     let sprite_ident = format_ident!("{}", file.name.to_upper_camel_case());
     let name = &file.name;

@@ -1,12 +1,13 @@
-use std::{borrow::Cow, fs::read_dir, path::Path};
+use std::{borrow::Cow, collections::HashMap, fs::read_dir, path::Path};
 
 use flate2::Decompress;
+use heck::ToUpperCamelCase;
 use image::{
     buffer::ConvertBuffer, GenericImage, GrayAlphaImage, ImageBuffer, ImageError, LumaA, Rgba,
-    RgbaImage,
+    RgbaImage, SubImage,
 };
 use itertools::Itertools;
-use sprity_core::{LoadDirError, SpriteMeta, SpriteSheet, SpriteSheetLayer, SpriteSheetTags};
+use sprity_core::{DynamicSpriteSheetMeta, LoadDirError, Sheet, SpriteSheetMeta};
 use thiserror::Error;
 
 use crate::binary::chunks::cel::CelContent;
@@ -17,54 +18,79 @@ static ASEPRITE_EXTENSIONS: &[&str] = &["ase", "aseprite"];
 
 pub struct BinaryLoader {}
 
-impl BinaryLoader {
-    fn load_sprite_meta(
+impl BinaryLoader {}
+
+impl sprity_core::Loader for BinaryLoader {
+    fn load_dir_meta(
         &self,
-        name: &str,
-        path: impl AsRef<Path>,
-    ) -> Result<SpriteMeta, LoadDirError> {
-        let content = std::fs::read(path)?;
-        let file = parse_file(&content).map_err(|e| LoadDirError::Parse {
-            filename: name.to_owned(),
-            message: e.to_string(),
-        });
-        file.map(|file| SpriteMeta {
-            name: name.to_owned(),
-            layers: file.layers().map(|layer| layer.name.to_owned()).collect(),
-            tags: file.tags().map(|tag| tag.name.to_owned()).collect(),
-        })
-    }
-    fn load_sprite(&self, name: &str, path: impl AsRef<Path>) -> Result<SpriteSheet, LoadDirError> {
-        let content = std::fs::read(path)?;
-        let file = parse_file(&content).map_err(|e| LoadDirError::Parse {
-            filename: name.to_owned(),
-            message: e.to_string(),
-        })?;
-        let mut sprites = Vec::new();
-        for frame in file.frames.iter() {
-            for cel in frame.cels() {
-                if let Some(image) = read_image(&file.header, cel).unwrap() {
-                    sprites.push(image);
+        dir: &dyn AsRef<Path>,
+    ) -> Result<Vec<DynamicSpriteSheetMeta>, LoadDirError> {
+        let entries: Vec<_> = read_dir(dir)?.try_collect()?;
+        entries
+            .iter()
+            .filter_map(|entry| {
+                let path = entry.path();
+                let name = path.file_stem()?.to_str()?.to_upper_camel_case();
+                let ext = path.extension()?;
+                if ASEPRITE_EXTENSIONS.contains(&ext.to_str()?.to_lowercase().as_ref()) {
+                    Some(load_sprite_meta(&name, &path))
+                } else {
+                    None
                 }
-            }
-        }
-        Ok(SpriteSheet {
-            name: name.to_owned(),
-            tags: file
-                .tags()
-                .map(|tag| SpriteSheetTags {
-                    name: tag.name.to_owned(),
-                })
-                .collect(),
-            layers: file
-                .tags()
-                .map(|layer| SpriteSheetLayer {
-                    name: layer.name.to_owned(),
-                })
-                .collect(),
-            sprites,
-        })
+            })
+            .try_collect()
     }
+    fn load_dir(
+        &self,
+        dir: &dyn AsRef<Path>,
+        sheets: &[&dyn SpriteSheetMeta],
+    ) -> Result<Vec<Sheet>, LoadDirError> {
+        let available_sheets: HashMap<_, _> = read_dir(dir)?
+            .filter_map(|entry| entry.ok())
+            .filter_map(|entry| {
+                let path = entry.path();
+                let name = path.file_stem()?.to_str()?.to_upper_camel_case();
+                let ext = path.extension()?;
+                if ASEPRITE_EXTENSIONS.contains(&ext.to_str()?.to_lowercase().as_ref()) {
+                    Some((name, path))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let sheets_to_load: Vec<_> = sheets
+            .iter()
+            .map(|&meta| {
+                available_sheets
+                    .get(meta.name())
+                    .map(|path| (path, meta))
+                    .ok_or_else(|| LoadDirError::MissingSprite(meta.name().to_owned()))
+            })
+            .try_collect()?;
+        sheets_to_load
+            .into_iter()
+            .map(|(path, meta)| load_sheet(path, meta))
+            .try_collect()
+    }
+}
+
+fn load_sprite_meta(
+    name: &str,
+    path: impl AsRef<Path>,
+) -> Result<DynamicSpriteSheetMeta, LoadDirError> {
+    let content = std::fs::read(path)?;
+    let file = parse_file(&content).map_err(|e| LoadDirError::Parse {
+        filename: name.to_owned(),
+        message: e.to_string(),
+    });
+    file.map(|file| DynamicSpriteSheetMeta {
+        name: name.to_owned(),
+        layers: file
+            .normal_layers()
+            .map(|layer| layer.name.to_owned())
+            .collect(),
+        tags: file.tags().map(|tag| tag.name.to_owned()).collect(),
+    })
 }
 
 #[derive(Debug, Error)]
@@ -110,7 +136,11 @@ struct ImageData<'a> {
     data: Cow<'a, [u8]>,
 }
 
-fn read_image(header: &Header, cel: &CelChunk) -> Result<Option<RgbaImage>, ReadImageError> {
+fn read_image(
+    header: &Header,
+    cel: &CelChunk,
+    target: &mut SubImage<&mut RgbaImage>,
+) -> Result<bool, ReadImageError> {
     let image_data = match cel.content {
         CelContent::RawImageData {
             width,
@@ -130,7 +160,7 @@ fn read_image(header: &Header, cel: &CelChunk) -> Result<Option<RgbaImage>, Read
             height,
             data: Cow::Owned(decompress(width, height, header.color_depth.bpp(), data)?),
         },
-        _ => return Ok(None),
+        _ => return Ok(false),
     };
     let x: u32 = cel
         .x
@@ -140,24 +170,24 @@ fn read_image(header: &Header, cel: &CelChunk) -> Result<Option<RgbaImage>, Read
         .y
         .try_into()
         .map_err(|_| ReadImageError::NegativeCelY(cel.y))?;
-    let image: RgbaImage = match header.color_depth {
+    match header.color_depth {
         ColorDepth::Grayscale => {
             let mut image = GrayAlphaImage::new(header.width.into(), header.height.into());
-            image.copy_from(
+            target.copy_from(
                 &ImageBuffer::<LumaA<u8>, _>::from_raw(
                     image_data.width.into(),
                     image_data.height.into(),
                     image_data.data,
                 )
-                .ok_or(ReadImageError::IncompleteImage)?,
+                .ok_or(ReadImageError::IncompleteImage)?
+                .convert(),
                 x,
                 y,
             )?;
-            image.convert()
         }
         ColorDepth::Rgba => {
             let mut image = RgbaImage::new(header.width.into(), header.height.into());
-            image.copy_from(
+            target.copy_from(
                 &ImageBuffer::<Rgba<u8>, _>::from_raw(
                     image_data.width.into(),
                     image_data.height.into(),
@@ -167,47 +197,64 @@ fn read_image(header: &Header, cel: &CelChunk) -> Result<Option<RgbaImage>, Read
                 x,
                 y,
             )?;
-            image
         }
         color_depth => return Err(ReadImageError::UnsupportedColorDepth(color_depth)),
     };
-    Ok(Some(image))
+    Ok(true)
 }
 
-impl sprity_core::Loader for BinaryLoader {
-    fn load_dir_meta(&self, dir: &dyn AsRef<Path>) -> Result<Vec<SpriteMeta>, LoadDirError> {
-        let entries: Vec<_> = read_dir(dir)?.try_collect()?;
-        entries
-            .iter()
-            .filter_map(|entry| {
-                let path = entry.path();
-                let name = path.file_stem()?;
-                let ext = path.extension()?;
-                if ASEPRITE_EXTENSIONS.contains(&ext.to_str()?.to_lowercase().as_ref()) {
-                    Some(self.load_sprite_meta(name.to_str()?, &path))
-                } else {
-                    None
-                }
-            })
-            .try_collect()
+fn load_sheet(
+    path: &dyn AsRef<Path>,
+    meta: &dyn sprity_core::SpriteSheetMeta,
+) -> Result<Sheet, LoadDirError> {
+    let content = std::fs::read(path)?;
+    let file = parse_file(&content).map_err(|e| LoadDirError::Parse {
+        filename: meta.name().to_owned(),
+        message: e.to_string(),
+    })?;
+    let sprite_width: u32 = file.header.width.into();
+    let sprite_height: u32 = file.header.height.into();
+    let tags: HashMap<String, &super::chunks::tags::Tag> = file
+        .tags()
+        .map(|tag| (tag.name.to_upper_camel_case(), tag))
+        .collect();
+    // FIXME add support for layer blend mode, opacity and index reordering
+    let layers: HashMap<&str, (usize, &super::chunks::layer::LayerChunk)> = file
+        .normal_layers()
+        .enumerate()
+        .map(|(index, layer)| (layer.name, (index, layer)))
+        .collect();
+    let mut indices: Vec<Option<(usize, usize)>> = vec![None; tags.len() * layers.len()];
+    let image_count: u32 = file
+        .image_cels()
+        .count()
+        .try_into()
+        .expect("More than 2^32 image cels counted");
+    // XXX replace this by usize::log2 once it hits stable rust
+    let cols = (1..).find(|cols| cols * cols >= image_count).unwrap();
+    // XXX replace this by usize::div_ceil once it hits stable rust
+    let rows = (image_count + cols - 1) / cols;
+    let mut image = RgbaImage::new(sprite_width * cols, sprite_height * rows);
+    let mut index = 0u32;
+    for (frame_index, frame) in file.frames.iter().enumerate() {
+        for cel in frame.cels() {
+            let x = index % cols;
+            let y = index / cols;
+            if read_image(
+                &file.header,
+                cel,
+                &mut image.sub_image(
+                    x * sprite_width,
+                    y * sprite_height,
+                    sprite_width,
+                    sprite_height,
+                ),
+            )
+            .map_err(|e| LoadDirError::Other(Box::new(e)))?
+            {
+                index += 1;
+            }
+        }
     }
-    fn load_dir(
-        &self,
-        dir: &dyn AsRef<Path>,
-    ) -> Result<Vec<sprity_core::SpriteSheet>, LoadDirError> {
-        let entries: Vec<_> = read_dir(dir)?.try_collect()?;
-        entries
-            .iter()
-            .filter_map(|entry| {
-                let path = entry.path();
-                let name = path.file_stem()?;
-                let ext = path.extension()?;
-                if ASEPRITE_EXTENSIONS.contains(&ext.to_str()?.to_lowercase().as_ref()) {
-                    Some(self.load_sprite(name.to_str()?, &path))
-                } else {
-                    None
-                }
-            })
-            .try_collect()
-    }
+    Ok(Sheet { cols, rows, image })
 }

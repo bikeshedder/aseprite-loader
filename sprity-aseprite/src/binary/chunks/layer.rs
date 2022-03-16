@@ -30,7 +30,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerType {
     Normal,
     Group,
