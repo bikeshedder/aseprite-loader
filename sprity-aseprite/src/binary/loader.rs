@@ -101,12 +101,16 @@ enum DecompressError {
     FlateError(#[from] flate2::DecompressError),
 }
 
-fn decompress(width: u16, height: u16, bpp: u16, data: &[u8]) -> Result<Vec<u8>, DecompressError> {
+fn decompress(
+    width: u16,
+    height: u16,
+    pixel_size: usize,
+    data: &[u8],
+) -> Result<Vec<u8>, DecompressError> {
     let width: usize = width.into();
     let height: usize = height.into();
-    let bytes_per_pixel: usize = (bpp / 8).into();
     let mut decompressor = Decompress::new(true);
-    let mut output = vec![0; width * height * bytes_per_pixel];
+    let mut output = vec![0; width * height * pixel_size];
     let status = decompressor.decompress(data, &mut output, flate2::FlushDecompress::Finish)?;
     match status {
         flate2::Status::Ok | flate2::Status::BufError => Err(DecompressError::FlateStatus(status)),
@@ -158,7 +162,15 @@ fn read_image(
         } => ImageData {
             width,
             height,
-            data: Cow::Owned(decompress(width, height, header.color_depth.bpp(), data)?),
+            data: Cow::Owned(decompress(
+                width,
+                height,
+                header
+                    .color_depth
+                    .pixel_size()
+                    .ok_or(ReadImageError::UnsupportedColorDepth(header.color_depth))?,
+                data,
+            )?),
         },
         _ => return Ok(false),
     };

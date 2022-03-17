@@ -25,6 +25,14 @@ impl ColorDepth {
             Self::Unknown(bpp) => *bpp,
         }
     }
+    pub fn pixel_size(&self) -> Option<usize> {
+        match self {
+            Self::Rgba => Some(4),
+            Self::Grayscale => Some(2),
+            Self::Indexed => Some(1),
+            Self::Unknown(_) => None,
+        }
+    }
 }
 
 impl From<Word> for ColorDepth {
