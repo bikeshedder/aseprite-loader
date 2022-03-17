@@ -23,21 +23,20 @@ pub fn aseprite_dir(
     let sprite_enum = gen_enum(&files);
 
     Ok(quote! {
-        #( #sprite_structs )*
         #sprite_enum
+        #( #sprite_structs )*
     })
 }
 
 fn gen_enum(files: &[DynamicSpriteSheetMeta]) -> TokenStream {
-    let sprite_idents = files
+    let sprite_names = files
         .iter()
-        .map(|f| format_ident!("{}", f.name.to_upper_camel_case()))
+        .map(|f| f.name.to_upper_camel_case())
         .collect::<Vec<_>>();
-    let mod_idents = files
+    let sprite_idents = sprite_names
         .iter()
-        .map(|f| format_ident!("{}", f.name.to_snake_case()))
+        .map(|name| format_ident!("{}", name))
         .collect::<Vec<_>>();
-    let sprite_names = files.iter().map(|f| &f.name).collect::<Vec<_>>();
     let tags = files
         .iter()
         .flat_map(|f| {
@@ -62,7 +61,7 @@ fn gen_enum(files: &[DynamicSpriteSheetMeta]) -> TokenStream {
     quote! {
         #[allow(enum_variant_names)]
         pub enum Sprite {
-            #( #sprite_idents ( self :: #mod_idents :: Sprite ) ),*
+            #( #sprite_idents ( #sprite_idents ) ),*
         }
         impl ::sprity_core::Sprite for Sprite {
             fn name(&self) -> &'static str {
@@ -87,19 +86,29 @@ fn gen_enum(files: &[DynamicSpriteSheetMeta]) -> TokenStream {
 }
 
 fn gen_sprite_mod(file: &DynamicSpriteSheetMeta) -> TokenStream {
-    let mod_ident = format_ident!("{}", file.name.to_snake_case());
-    let sprite_ident = format_ident!("{}", file.name.to_upper_camel_case());
-    let name = &file.name;
-    let tag_idents = file
+    let sprite_name = file.name.to_upper_camel_case();
+    let sprite_ident = format_ident!("{}", sprite_name);
+    let tag_ident = format_ident!("{}Tag", file.name.to_upper_camel_case());
+    let layer_ident = format_ident!("{}Layer", file.name.to_upper_camel_case());
+    let layers_ident = format_ident!("{}Layers", file.name.to_upper_camel_case());
+    let tag_names = file
         .tags
         .iter()
-        .map(|tag| format_ident!("{}", tag.to_upper_camel_case()))
+        .map(|tag| tag.to_upper_camel_case())
+        .collect::<Vec<_>>();
+    let tag_idents = tag_names
+        .iter()
+        .map(|tag_name| format_ident!("{}", tag_name))
         .collect::<Vec<_>>();
     let tag_count = tag_idents.len();
-    let layer_idents = file
+    let layer_names = file
         .layers
         .iter()
-        .map(|layer| format_ident!("{}", layer.to_upper_camel_case()))
+        .map(|layer| layer.to_upper_camel_case())
+        .collect::<Vec<_>>();
+    let layer_idents = layer_names
+        .iter()
+        .map(|layer_name| format_ident!("{}", layer_name))
         .collect::<Vec<_>>();
     let layer_count = layer_idents.len();
     let layer_flags = file
@@ -108,92 +117,95 @@ fn gen_sprite_mod(file: &DynamicSpriteSheetMeta) -> TokenStream {
         .map(|layer| format_ident!("{}", layer.to_snake_case()))
         .collect::<Vec<_>>();
     quote! {
-        pub mod #mod_ident {
+        /*
+        pub const NAME: &str = #sprite_name;
+        pub const TAGS: [super :: Tag; #tag_count] = [ #(super :: Tag :: #tag_idents , )* ];
+        pub const LAYERS: [super :: Layer; #layer_count] = [ #(super :: Layer :: #layer_idents , )* ];
+        */
 
-            pub const NAME: &str = #name;
-            pub const TAGS: [super :: Tag; #tag_count] = [ #(super :: Tag :: #tag_idents , )* ];
-            pub const LAYERS: [super :: Layer; #layer_count] = [ #(super :: Layer :: #layer_idents , )* ];
-
-            pub struct Sprite {
-                pub tag: Tag,
-                pub layers: Layers,
+        pub struct #sprite_ident {
+            pub tag: #tag_ident,
+            pub layers: #layers_ident,
+        }
+        impl #sprite_ident {
+            fn sprite(self) -> Sprite {
+                Sprite :: #sprite_ident (self)
             }
-            impl Sprite {
-                fn sprite(self) -> super :: Sprite {
-                    super :: Sprite :: #sprite_ident (self)
+        }
+        impl ::sprity_core::Sprite for #sprite_ident {
+            fn name(&self) -> &'static str {
+                #sprite_name
+            }
+        }
+        #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+        #[allow(enum_variant_names)]
+        pub enum #tag_ident {
+            #( #tag_idents , )*
+        }
+        impl #tag_ident {
+            pub fn index(&self) -> usize {
+                *self as usize
+            }
+        }
+        impl ::sprity_core::Tag for #tag_ident {
+            fn name(&self) -> &str {
+                match self {
+                    #( Self :: #tag_idents => #tag_names , )*
                 }
             }
-            impl ::sprity_core::Sprite for Sprite {
-                fn name(&self) -> &'static str {
-                    #name
+        }
+        impl From<#tag_ident> for Tag {
+            fn from(value: #tag_ident) -> Self {
+                match value {
+                    #( #tag_ident :: #tag_idents => Self :: #tag_idents , )*
                 }
             }
-            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-            #[allow(enum_variant_names)]
-            pub enum Tag {
-                #( #tag_idents , )*
-            }
-            impl Tag {
-                pub fn index(&self) -> usize {
-                    *self as usize
+        }
+        impl std::convert::TryFrom<Tag> for #tag_ident {
+            type Error = ();
+            fn try_from(value: Tag) -> Result<Self, Self::Error> {
+                match value {
+                    #( Tag :: #tag_idents => Ok(Self :: #tag_idents) , )*
+                    _ => Err(())
                 }
             }
-            impl ::sprity_core::Tag for Tag {
-                fn name(&self) -> &str {
-                    #name
+        }
+        #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+        #[allow(enum_variant_names)]
+        pub enum #layer_ident {
+            #( #layer_idents , )*
+        }
+        impl #layer_ident {
+            pub fn index(&self) -> usize {
+                *self as usize
+            }
+        }
+        impl ::sprity_core::Layer for #layer_ident {
+            fn name(&self) -> &str {
+                match self {
+                    #( Self :: #layer_idents => #layer_names , )*
                 }
             }
-            impl From<Tag> for super::Tag {
-                fn from(value: Tag) -> super::Tag {
-                    match value {
-                        #( Tag :: #tag_idents => Self :: #tag_idents , )*
-                    }
+        }
+        impl From<#layer_ident> for Layer {
+            fn from(value: #layer_ident) -> Self {
+                match value {
+                    #( #layer_ident :: #layer_idents => Self :: #layer_idents , )*
                 }
             }
-            impl std::convert::TryFrom<super::Tag> for Tag {
-                type Error = ();
-                fn try_from(value: super::Tag) -> Result<Self, Self::Error> {
-                    match value {
-                        #( super :: Tag :: #tag_idents => Ok(Self :: #tag_idents) , )*
-                        _ => Err(())
-                    }
+        }
+        impl std::convert::TryFrom<Layer> for #layer_ident {
+            type Error = ();
+            fn try_from(value: Layer) -> Result<Self, Self::Error> {
+                match value {
+                    #( Layer :: #layer_idents => Ok(Self :: #layer_idents) , )*
+                    _ => Err(())
                 }
             }
-            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-            #[allow(enum_variant_names)]
-            pub enum Layer {
-                #( #layer_idents , )*
-            }
-            impl Layer {
-                pub fn index(&self) -> usize {
-                    *self as usize
-                }
-            }
-            impl ::sprity_core::Layer for Layer {
-                fn name(&self) -> &str {
-                    #name
-                }
-            }
-            impl From<Layer> for super::Layer {
-                fn from(value: Layer) -> super::Layer {
-                    match value {
-                        #( Layer :: #layer_idents => Self :: #layer_idents , )*
-                    }
-                }
-            }
-            impl std::convert::TryFrom<super::Layer> for Layer {
-                type Error = ();
-                fn try_from(value: super::Layer) -> Result<Self, Self::Error> {
-                    match value {
-                        #( super :: Layer :: #layer_idents => Ok(Self :: #layer_idents) , )*
-                        _ => Err(())
-                    }
-                }
-            }
-            #[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
-            pub struct Layers {
-                #( pub #layer_flags : bool , )*
-            }
+        }
+        #[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+        pub struct #layers_ident {
+            #( pub #layer_flags : bool , )*
         }
     }
 }

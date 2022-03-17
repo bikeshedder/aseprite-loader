@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-    use sprity_core::Sprite;
+    use sprity_core::{Layer, Sprite, Tag};
 
     pub mod sprites {
         use sprity_aseprite_macros::aseprite_dir;
@@ -9,39 +9,41 @@ mod tests {
     }
 
     #[test]
-    fn it_works() {
-        let sprite = sprites::Sprite::Player(sprites::player::Sprite {
-            tag: sprites::player::Tag::WalkRight,
-            layers: sprites::player::Layers {
+    fn test_basics() {
+        let sprite = sprites::Sprite::Player(sprites::Player {
+            tag: sprites::PlayerTag::WalkRight,
+            layers: sprites::PlayerLayers {
                 base: true,
                 ..Default::default()
             },
         });
-        assert_eq!(sprite.name(), "player");
-        let player = sprites::player::Sprite {
-            tag: sprites::player::Tag::WalkRight,
-            layers: sprites::player::Layers {
+        assert_eq!(sprite.name(), "Player");
+        let player = sprites::Player {
+            tag: sprites::PlayerTag::WalkRight,
+            layers: sprites::PlayerLayers {
                 base: true,
                 ..Default::default()
             },
         };
-        assert_eq!(player.name(), "player");
-        let tag = sprites::player::Tag::WalkRight;
+        assert_eq!(player.name(), "Player");
+        let tag = sprites::PlayerTag::WalkRight;
         assert_eq!(tag.index(), 2);
-        let layer = sprites::player::Layer::Base;
+        assert_eq!(tag.name(), "WalkRight");
+        let layer = sprites::PlayerLayer::Base;
         assert_eq!(layer.index(), 0);
+        assert_eq!(layer.name(), "Base");
     }
 
     #[test]
     fn test_layer_from() {
-        assert_eq!(sprites::Layer::Base, sprites::player::Layer::Base.into());
+        assert_eq!(sprites::Layer::Base, sprites::PlayerLayer::Base.into());
     }
 
     #[test]
     fn test_layer_try_from() {
         assert_eq!(
             sprites::Layer::Base.try_into(),
-            Ok(sprites::player::Layer::Base)
+            Ok(sprites::PlayerLayer::Base)
         );
     }
 
@@ -49,7 +51,7 @@ mod tests {
     fn test_tag_from() {
         assert_eq!(
             sprites::Tag::WalkRight,
-            sprites::player::Tag::WalkRight.into(),
+            sprites::PlayerTag::WalkRight.into(),
         )
     }
 
@@ -57,7 +59,7 @@ mod tests {
     fn test_tag_try_from() {
         assert_eq!(
             sprites::Tag::WalkRight.try_into(),
-            Ok(sprites::player::Tag::WalkRight),
+            Ok(sprites::PlayerTag::WalkRight),
         )
     }
 }
