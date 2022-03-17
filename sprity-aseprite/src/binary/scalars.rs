@@ -29,6 +29,13 @@ pub struct Color {
     pub alpha: u8,
 }
 
+#[derive(Debug)]
+pub struct RGB {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+}
+
 use super::errors::{ParseError, ParseResult};
 
 #[inline]
@@ -101,4 +108,11 @@ pub fn parse_color(input: &[u8]) -> ParseResult<Color> {
             alpha,
         },
     ))
+}
+
+pub fn parse_rgb(input: &[u8]) -> ParseResult<RGB> {
+    let (input, red) = byte(input)?;
+    let (input, green) = byte(input)?;
+    let (input, blue) = byte(input)?;
+    Ok((input, RGB { red, green, blue }))
 }

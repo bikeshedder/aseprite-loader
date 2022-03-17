@@ -8,6 +8,7 @@ use super::{
         color_profile::{parse_color_profile, ColorProfileChunk},
         external_files::{parse_external_files_chunk, ExternalFilesChunk},
         layer::{parse_layer_chunk, LayerChunk},
+        old_palette::{parse_old_palette_chunk, OldPaletteChunk},
         palette::{parse_palette_chunk, PaletteChunk},
         slice::{parse_slice_chunk, SliceChunk},
         tags::{parse_tags_chunk, TagsChunk},
@@ -20,8 +21,8 @@ use super::{
 
 #[derive(Debug)]
 pub enum Chunk<'a> {
-    Palette0004,
-    Palette0011,
+    Palette0004(OldPaletteChunk),
+    Palette0011(OldPaletteChunk),
     Layer(LayerChunk<'a>),
     Cel(CelChunk<'a>),
     CelExtra(CelExtraChunk<'a>),
@@ -46,8 +47,8 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
     let (rest, input) = take(size - 4)(input)?;
     let (chunk_data, chunk_type) = parse_chunk_type(input)?;
     let chunk = match chunk_type {
-        Ok(ChunkType::Palette0004) => Chunk::Palette0004,
-        Ok(ChunkType::Palette0011) => Chunk::Palette0011,
+        Ok(ChunkType::Palette0004) => Chunk::Palette0004(parse_old_palette_chunk(chunk_data)?.1),
+        Ok(ChunkType::Palette0011) => Chunk::Palette0011(parse_old_palette_chunk(chunk_data)?.1),
         Ok(ChunkType::Layer) => Chunk::Layer(parse_layer_chunk(chunk_data)?.1),
         Ok(ChunkType::Cel) => Chunk::Cel(parse_cel_chunk(chunk_data)?.1),
         Ok(ChunkType::CelExtra) => Chunk::CelExtra(parse_cel_extra_chunk(chunk_data)?.1),
