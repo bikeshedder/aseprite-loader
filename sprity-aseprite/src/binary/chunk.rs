@@ -9,6 +9,7 @@ use super::{
         external_files::{parse_external_files_chunk, ExternalFilesChunk},
         layer::{parse_layer_chunk, LayerChunk},
         palette::{parse_palette_chunk, PaletteChunk},
+        slice::{parse_slice_chunk, SliceChunk},
         tags::{parse_tags_chunk, TagsChunk},
         user_data::{parse_user_data_chunk, UserDataChunk},
     },
@@ -30,6 +31,7 @@ pub enum Chunk<'a> {
     Tags(TagsChunk<'a>),
     Palette(PaletteChunk<'a>),
     UserData(UserDataChunk<'a>),
+    Slice(SliceChunk<'a>),
     NotImplemented(ChunkType),
     Unsupported(u16),
 }
@@ -57,7 +59,7 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
         Ok(ChunkType::Tags) => Chunk::Tags(parse_tags_chunk(chunk_data)?.1),
         Ok(ChunkType::Palette) => Chunk::Palette(parse_palette_chunk(chunk_data)?.1),
         Ok(ChunkType::UserData) => Chunk::UserData(parse_user_data_chunk(chunk_data)?.1),
-        // TODO Slice Chunk
+        Ok(ChunkType::Slice) => Chunk::Slice(parse_slice_chunk(chunk_data)?.1),
         // TODO Tileset Chunk
         Ok(chunk_type) => Chunk::NotImplemented(chunk_type),
         Err(chunk_type) => Chunk::Unsupported(chunk_type),
