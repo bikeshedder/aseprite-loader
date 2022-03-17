@@ -11,6 +11,7 @@ use super::{
         palette::{parse_palette_chunk, PaletteChunk},
         slice::{parse_slice_chunk, SliceChunk},
         tags::{parse_tags_chunk, TagsChunk},
+        tileset::{parse_tileset_chunk, TilesetChunk},
         user_data::{parse_user_data_chunk, UserDataChunk},
     },
     errors::{ParseError, ParseResult},
@@ -32,7 +33,7 @@ pub enum Chunk<'a> {
     Palette(PaletteChunk<'a>),
     UserData(UserDataChunk<'a>),
     Slice(SliceChunk<'a>),
-    NotImplemented(ChunkType),
+    Tileset(TilesetChunk<'a>),
     Unsupported(u16),
 }
 
@@ -60,8 +61,7 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
         Ok(ChunkType::Palette) => Chunk::Palette(parse_palette_chunk(chunk_data)?.1),
         Ok(ChunkType::UserData) => Chunk::UserData(parse_user_data_chunk(chunk_data)?.1),
         Ok(ChunkType::Slice) => Chunk::Slice(parse_slice_chunk(chunk_data)?.1),
-        // TODO Tileset Chunk
-        Ok(chunk_type) => Chunk::NotImplemented(chunk_type),
+        Ok(ChunkType::Tileset) => Chunk::Tileset(parse_tileset_chunk(chunk_data)?.1),
         Err(chunk_type) => Chunk::Unsupported(chunk_type),
     };
     Ok((rest, chunk))

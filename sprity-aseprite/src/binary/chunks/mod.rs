@@ -6,4 +6,5 @@ pub mod layer;
 pub mod palette;
 pub mod slice;
 pub mod tags;
+pub mod tileset;
 pub mod user_data;
