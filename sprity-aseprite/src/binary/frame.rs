@@ -22,7 +22,6 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    #[must_use]
     pub fn cels(&self) -> impl Iterator<Item = &CelChunk> {
         self.chunks.iter().filter_map(|chunk| {
             if let Chunk::Cel(cel) = chunk {

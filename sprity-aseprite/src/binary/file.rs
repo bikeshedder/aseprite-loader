@@ -1,5 +1,3 @@
-use crate::binary::chunks::cel::CelContent;
-
 use super::{
     chunk::Chunk,
     chunks::{
@@ -19,7 +17,6 @@ pub struct File<'a> {
 }
 
 impl<'a> File<'a> {
-    #[must_use]
     pub fn normal_layers(&self) -> impl Iterator<Item = &LayerChunk> {
         self.frames.iter().flat_map(|frame| {
             frame.chunks.iter().filter_map(|chunk| match chunk {
@@ -28,7 +25,6 @@ impl<'a> File<'a> {
             })
         })
     }
-    #[must_use]
     pub fn tags(&self) -> impl Iterator<Item = &Tag> {
         self.frames
             .iter()
@@ -40,7 +36,6 @@ impl<'a> File<'a> {
             })
             .flat_map(|tags| tags.iter())
     }
-    #[must_use]
     pub fn image_cels(&self) -> impl Iterator<Item = (usize, &CelChunk)> {
         self.frames
             .iter()
