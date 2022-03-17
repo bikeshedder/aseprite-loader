@@ -21,13 +21,7 @@ pub type Long = i32;
 #[derive(Debug)]
 pub struct Fixed(u16, u16);
 
-#[derive(Debug)]
-pub struct Color {
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
-    pub alpha: u8,
-}
+pub use sprity_core::Color;
 
 #[derive(Debug)]
 pub struct RGB {
@@ -81,6 +75,12 @@ pub fn parse_dword_as_usize(input: &[u8]) -> ParseResult<usize> {
     let size = size
         .try_into()
         .map_err(|_| nom::Err::Failure(ParseError::DwordToUsize(size)))?;
+    Ok((input, size))
+}
+
+pub fn parse_dword_as_u8<'a>(input: &'a [u8], e: ParseError<'a>) -> ParseResult<'a, u8> {
+    let (input, size) = dword(input)?;
+    let size = size.try_into().map_err(|_| nom::Err::Failure(e))?;
     Ok((input, size))
 }
 

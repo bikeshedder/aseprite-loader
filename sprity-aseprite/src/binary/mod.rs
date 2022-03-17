@@ -12,4 +12,5 @@ pub mod file;
 pub mod frame;
 pub mod header;
 pub mod loader;
+pub mod palette;
 pub mod scalars;

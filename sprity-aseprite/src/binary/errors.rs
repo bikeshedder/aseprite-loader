@@ -17,6 +17,9 @@ pub enum ParseError<'a> {
     /// This variant is used when a string does not contain
     /// valid UTF-8 data and `str::from_utf8` returned an error.
     Utf8Error(Utf8Error),
+    /// The uses index colors but the palette could not be
+    /// generated due to errors in the palette chunks.
+    PaletteError(&'static str),
     /// This variant is used when the nom combinators return
     /// an error.
     Nom(nom::error::Error<&'a [u8]>),
