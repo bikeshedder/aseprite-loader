@@ -8,6 +8,7 @@ use super::{
         color_profile::{parse_color_profile, ColorProfileChunk},
         external_files::{parse_external_files_chunk, ExternalFilesChunk},
         layer::{parse_layer_chunk, LayerChunk},
+        mask::{parse_mask_chunk, MaskChunk},
         old_palette::{parse_old_palette_chunk, OldPaletteChunk},
         palette::{parse_palette_chunk, PaletteChunk},
         slice::{parse_slice_chunk, SliceChunk},
@@ -28,7 +29,7 @@ pub enum Chunk<'a> {
     CelExtra(CelExtraChunk<'a>),
     ColorProfile(ColorProfileChunk<'a>),
     ExternalFiles(ExternalFilesChunk<'a>),
-    Mask,
+    Mask(MaskChunk<'a>),
     Path,
     Tags(TagsChunk<'a>),
     Palette(PaletteChunk<'a>),
@@ -56,7 +57,7 @@ pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
         Ok(ChunkType::ExternalFile) => {
             Chunk::ExternalFiles(parse_external_files_chunk(chunk_data)?.1)
         }
-        Ok(ChunkType::Mask) => Chunk::Mask,
+        Ok(ChunkType::Mask) => Chunk::Mask(parse_mask_chunk(chunk_data)?.1),
         Ok(ChunkType::Path) => Chunk::Path,
         Ok(ChunkType::Tags) => Chunk::Tags(parse_tags_chunk(chunk_data)?.1),
         Ok(ChunkType::Palette) => Chunk::Palette(parse_palette_chunk(chunk_data)?.1),

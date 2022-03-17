@@ -3,6 +3,7 @@ pub mod cel_extra;
 pub mod color_profile;
 pub mod external_files;
 pub mod layer;
+pub mod mask;
 pub mod old_palette;
 pub mod palette;
 pub mod slice;
