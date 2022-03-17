@@ -70,8 +70,37 @@ fn test_parse_file() {
 }
 
 #[test]
-fn test_parse_indexed() {
+fn test_palette() {
+    use sprity_core::Color;
     let input = std::fs::read("./tests/indexed.aseprite").unwrap();
     let file = parse_file(&input).unwrap();
     assert_eq!(file.header.color_depth, ColorDepth::Indexed);
+    let palette = file.palette.unwrap();
+    assert_eq!(
+        palette.colors[27],
+        Color {
+            red: 172,
+            green: 50,
+            blue: 50,
+            alpha: 255
+        }
+    );
+    assert_eq!(
+        palette.colors[10],
+        Color {
+            red: 106,
+            green: 190,
+            blue: 48,
+            alpha: 255
+        }
+    );
+    assert_eq!(
+        palette.colors[17],
+        Color {
+            red: 91,
+            green: 110,
+            blue: 225,
+            alpha: 255
+        }
+    );
 }
