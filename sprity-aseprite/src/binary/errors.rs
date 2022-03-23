@@ -2,7 +2,7 @@ use std::str::Utf8Error;
 
 use nom::IResult;
 
-use super::scalars::Dword;
+use super::{palette::PaletteError, scalars::Dword};
 
 #[derive(Debug, strum_macros::Display)]
 pub enum ParseError<'a> {
@@ -19,7 +19,7 @@ pub enum ParseError<'a> {
     Utf8Error(Utf8Error),
     /// The uses index colors but the palette could not be
     /// generated due to errors in the palette chunks.
-    PaletteError(&'static str),
+    PaletteError(PaletteError),
     /// This variant is used when the nom combinators return
     /// an error.
     Nom(nom::error::Error<&'a [u8]>),

@@ -187,9 +187,6 @@ impl<'a> ImageLoader for AsepriteImageLoader<'a> {
             }
             (ColorDepth::Unknown(_), _) => return Err(LoadImageError::UnsupportedColorDepth),
         }
-        if self.cel.compressed {
-            decompress(self.cel.data, target)?;
-        }
         Ok(target)
     }
     fn size(&self) -> (u16, u16) {

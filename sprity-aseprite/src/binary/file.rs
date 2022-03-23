@@ -51,7 +51,10 @@ pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
     let (input, header) = parse_header(input)?;
     let (_, frames) = parse_frames(input)?;
     let palette = match header.color_depth {
-        ColorDepth::Indexed => Some(create_palette(&frames)),
+        ColorDepth::Indexed => Some(
+            create_palette(&header, &frames)
+                .map_err(|e| nom::Err::Failure(ParseError::PaletteError(e)))?,
+        ),
         _ => None,
     };
     Ok(File {
