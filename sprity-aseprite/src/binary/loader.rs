@@ -9,13 +9,14 @@ use heck::ToUpperCamelCase;
 use itertools::Itertools;
 use sprity_core::{
     DynamicSpriteSheetMeta, ImageLoader, ListDirError, LoadDirError, LoadImageError,
-    LoadSpriteError, Palette, SpriteLoader, SpriteSheetMeta,
+    LoadSpriteError, SpriteLoader, SpriteSheetMeta,
 };
 
 use super::{
     chunks::cel::ImageCel,
     color_depth::ColorDepth,
     file::{parse_file, File},
+    palette::Palette,
 };
 
 static ASEPRITE_EXTENSIONS: &[&str] = &["ase", "aseprite"];

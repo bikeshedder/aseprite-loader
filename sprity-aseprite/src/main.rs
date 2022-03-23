@@ -1,3 +1,4 @@
+use image::RgbaImage;
 use sprity_aseprite::binary::loader::BinaryLoader;
 use sprity_core::{Loader, SpriteSheetMeta};
 
@@ -13,7 +14,9 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (i, image) in sprite.images().enumerate() {
         let mut buf = vec![0u8; image.bytes()];
         let slice = image.load(&mut buf)?;
-        println!("{}: {}", i, slice.len());
+        let size = image.size();
+        let image = RgbaImage::from_raw(size.0.into(), size.1.into(), buf).unwrap();
+        image.save(format!("output/{i}.png"))?;
     }
     //sprite.image.save("out/atlas.png")?;
     Ok(())

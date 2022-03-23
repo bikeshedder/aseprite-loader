@@ -1,6 +1,19 @@
-pub use sprity_core::Palette;
+pub use sprity_core::Color;
 
 use super::{chunk::Chunk, frame::Frame};
+
+#[derive(Debug)]
+pub struct Palette {
+    pub colors: [Color; 256],
+}
+
+impl Default for Palette {
+    fn default() -> Self {
+        Palette {
+            colors: [Color::default(); 256],
+        }
+    }
+}
 
 pub fn create_palette(frames: &[Frame]) -> Palette {
     let mut palette = Palette::default();
