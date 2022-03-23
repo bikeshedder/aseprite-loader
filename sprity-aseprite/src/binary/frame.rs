@@ -4,13 +4,12 @@ use nom::{
     multi::many1,
 };
 
-use crate::binary::{chunks::cel::CelContent, scalars::dword_size};
-
 use super::{
     chunk::parse_chunks,
     chunk::Chunk,
-    chunks::cel::CelChunk,
+    chunks::cel::{CelChunk, ImageCel},
     errors::{ParseError, ParseResult},
+    scalars::dword_size,
     scalars::Word,
     scalars::{parse_dword_as_usize, word},
 };
@@ -31,16 +30,8 @@ impl<'a> Frame<'a> {
             }
         })
     }
-    pub fn image_cels(&self) -> impl Iterator<Item = &CelChunk> {
-        self.cels().filter(|chunk| {
-            matches!(
-                chunk,
-                CelChunk {
-                    content: CelContent::RawImageData { .. } | CelContent::CompressedImage { .. },
-                    ..
-                }
-            )
-        })
+    pub fn image_cels(&self) -> impl Iterator<Item = ImageCel> {
+        self.cels().filter_map(|chunk| chunk.image())
     }
 }
 

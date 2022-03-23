@@ -1,7 +1,7 @@
 use super::{
     chunk::Chunk,
     chunks::{
-        cel::CelChunk,
+        cel::ImageCel,
         layer::{LayerChunk, LayerType},
         tags::Tag,
     },
@@ -39,7 +39,7 @@ impl<'a> File<'a> {
             })
             .flat_map(|tags| tags.iter())
     }
-    pub fn image_cels(&self) -> impl Iterator<Item = (usize, &CelChunk)> {
+    pub fn image_cels(&self) -> impl Iterator<Item = (usize, ImageCel)> {
         self.frames
             .iter()
             .enumerate()

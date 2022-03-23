@@ -85,6 +85,38 @@ pub enum CelContent<'a> {
     Unknown(&'a [u8]),
 }
 
+impl<'a> CelChunk<'a> {
+    pub fn image(&self) -> Option<ImageCel> {
+        match self.content {
+            CelContent::RawImageData {
+                width,
+                height,
+                data,
+            } => Some(ImageCel {
+                x: self.x,
+                y: self.y,
+                width,
+                height,
+                data,
+                compressed: false,
+            }),
+            CelContent::CompressedImage {
+                width,
+                height,
+                data,
+            } => Some(ImageCel {
+                x: self.x,
+                y: self.y,
+                width,
+                height,
+                data,
+                compressed: true,
+            }),
+            _ => None,
+        }
+    }
+}
+
 pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
     let (input, layer_index) = word(input)?;
     let (input, x) = short(input)?;
@@ -148,4 +180,13 @@ pub fn parse_cel_chunk<'a>(input: &'a [u8]) -> ParseResult<CelChunk<'a>> {
             content,
         },
     ))
+}
+
+pub struct ImageCel<'a> {
+    pub x: i16,
+    pub y: i16,
+    pub width: u16,
+    pub height: u16,
+    pub compressed: bool,
+    pub data: &'a [u8],
 }

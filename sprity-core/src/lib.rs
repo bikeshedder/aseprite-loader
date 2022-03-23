@@ -5,7 +5,9 @@ mod palette;
 mod sheet;
 
 pub use color::Color;
-pub use loader::{LoadDirError, Loader};
+pub use loader::{
+    ImageLoader, ListDirError, LoadDirError, LoadImageError, LoadSpriteError, Loader, SpriteLoader,
+};
 pub use meta::{
     DynamicSpriteSheetMeta, LayerIterator, SpriteSheetMeta, StaticSpriteSheetMeta, TagIterator,
 };

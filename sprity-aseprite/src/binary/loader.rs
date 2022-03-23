@@ -1,18 +1,22 @@
-use std::{borrow::Cow, collections::HashMap, fs::read_dir, path::Path};
+use std::{
+    collections::HashMap,
+    fs::read_dir,
+    path::{Path, PathBuf},
+};
 
 use flate2::Decompress;
 use heck::ToUpperCamelCase;
-use image::{
-    buffer::ConvertBuffer, GenericImage, GrayAlphaImage, ImageBuffer, ImageError, LumaA, Rgba,
-    RgbaImage, SubImage,
-};
 use itertools::Itertools;
-use sprity_core::{DynamicSpriteSheetMeta, LoadDirError, Sheet, SpriteSheetMeta};
-use thiserror::Error;
+use sprity_core::{
+    DynamicSpriteSheetMeta, ImageLoader, ListDirError, LoadDirError, LoadImageError,
+    LoadSpriteError, Palette, SpriteLoader, SpriteSheetMeta,
+};
 
-use crate::binary::chunks::cel::CelContent;
-
-use super::{chunks::cel::CelChunk, color_depth::ColorDepth, file::parse_file, header::Header};
+use super::{
+    chunks::cel::ImageCel,
+    color_depth::ColorDepth,
+    file::{parse_file, File},
+};
 
 static ASEPRITE_EXTENSIONS: &[&str] = &["ase", "aseprite"];
 
@@ -40,11 +44,12 @@ impl sprity_core::Loader for BinaryLoader {
             })
             .try_collect()
     }
-    fn load_dir(
+
+    fn list_dir(
         &self,
         dir: &dyn AsRef<Path>,
-        sheets: &[&dyn SpriteSheetMeta],
-    ) -> Result<Vec<Sheet>, LoadDirError> {
+        meta: &[&dyn SpriteSheetMeta],
+    ) -> Result<Vec<PathBuf>, sprity_core::ListDirError> {
         let available_sheets: HashMap<_, _> = read_dir(dir)?
             .filter_map(|entry| entry.ok())
             .filter_map(|entry| {
@@ -58,25 +63,28 @@ impl sprity_core::Loader for BinaryLoader {
                 }
             })
             .collect();
-        let sheets_to_load: Vec<_> = sheets
-            .iter()
+        meta.iter()
             .map(|&meta| {
                 available_sheets
                     .get(meta.name())
-                    .map(|path| (path, meta))
-                    .ok_or_else(|| LoadDirError::MissingSprite(meta.name().to_owned()))
+                    .cloned()
+                    .ok_or_else(|| ListDirError::MissingSprite(meta.name().to_owned()))
             })
-            .try_collect()?;
-        sheets_to_load
-            .into_iter()
-            .map(|(path, meta)| load_sheet(path, meta))
             .try_collect()
+    }
+
+    fn load_sprite<'a>(
+        &self,
+        data: &'a [u8],
+        meta: &dyn SpriteSheetMeta,
+    ) -> Result<Box<dyn SpriteLoader + 'a>, LoadSpriteError> {
+        Ok(Box::new(AsepriteSpriteLoader::load(data, meta)?))
     }
 }
 
 fn load_sprite_meta(
     name: &str,
-    path: impl AsRef<Path>,
+    path: &dyn AsRef<Path>,
 ) -> Result<DynamicSpriteSheetMeta, LoadDirError> {
     let content = std::fs::read(path)?;
     let file = parse_file(&content).map_err(|e| LoadDirError::Parse {
@@ -93,180 +101,140 @@ fn load_sprite_meta(
     })
 }
 
-#[derive(Debug, Error)]
-enum DecompressError {
-    #[error("decompression failed")]
-    FlateStatus(flate2::Status),
-    #[error("decompression failed")]
-    FlateError(#[from] flate2::DecompressError),
+struct AsepriteSpriteLoader<'a> {
+    file: File<'a>,
 }
 
-fn decompress(
-    width: u16,
-    height: u16,
-    pixel_size: usize,
-    data: &[u8],
-) -> Result<Vec<u8>, DecompressError> {
-    let width: usize = width.into();
-    let height: usize = height.into();
-    let mut decompressor = Decompress::new(true);
-    let mut output = vec![0; width * height * pixel_size];
-    let status = decompressor.decompress(data, &mut output, flate2::FlushDecompress::Finish)?;
-    match status {
-        flate2::Status::Ok | flate2::Status::BufError => Err(DecompressError::FlateStatus(status)),
-        flate2::Status::StreamEnd => Ok(output),
+impl AsepriteSpriteLoader<'_> {
+    fn load<'a>(
+        data: &'a [u8],
+        meta: &dyn SpriteSheetMeta,
+    ) -> Result<AsepriteSpriteLoader<'a>, LoadSpriteError> {
+        let file = parse_file(data).map_err(|e| LoadSpriteError::Parse {
+            message: e.to_string(),
+        })?;
+        Ok(AsepriteSpriteLoader { file })
     }
 }
 
-#[derive(Error, Debug)]
-enum ReadImageError {
-    #[error("Decompression failed")]
-    Decompress(#[from] DecompressError),
-    #[error("Incomplete image")]
-    IncompleteImage,
-    #[error("Unsupported color depth")]
-    UnsupportedColorDepth(ColorDepth),
-    #[error("Negative cel X value")]
-    NegativeCelX(i16),
-    #[error("Negative cel Y value")]
-    NegativeCelY(i16),
-    #[error("Image error")]
-    ImageError(#[from] ImageError),
-}
-
-struct ImageData<'a> {
-    width: u16,
-    height: u16,
-    data: Cow<'a, [u8]>,
-}
-
-fn read_image(
-    header: &Header,
-    cel: &CelChunk,
-    target: &mut SubImage<&mut RgbaImage>,
-) -> Result<bool, ReadImageError> {
-    let image_data = match cel.content {
-        CelContent::RawImageData {
-            width,
-            height,
-            data,
-        } => ImageData {
-            width,
-            height,
-            data: Cow::Borrowed(data),
-        },
-        CelContent::CompressedImage {
-            width,
-            height,
-            data,
-        } => ImageData {
-            width,
-            height,
-            data: Cow::Owned(decompress(
-                width,
-                height,
-                header
-                    .color_depth
-                    .pixel_size()
-                    .ok_or(ReadImageError::UnsupportedColorDepth(header.color_depth))?,
-                data,
-            )?),
-        },
-        _ => return Ok(false),
-    };
-    let x: u32 = cel
-        .x
-        .try_into()
-        .map_err(|_| ReadImageError::NegativeCelX(cel.x))?;
-    let y: u32 = cel
-        .y
-        .try_into()
-        .map_err(|_| ReadImageError::NegativeCelY(cel.y))?;
-    match header.color_depth {
-        ColorDepth::Grayscale => {
-            let mut image = GrayAlphaImage::new(header.width.into(), header.height.into());
-            target.copy_from(
-                &ImageBuffer::<LumaA<u8>, _>::from_raw(
-                    image_data.width.into(),
-                    image_data.height.into(),
-                    image_data.data,
-                )
-                .ok_or(ReadImageError::IncompleteImage)?
-                .convert(),
-                x,
-                y,
-            )?;
-        }
-        ColorDepth::Rgba => {
-            let mut image = RgbaImage::new(header.width.into(), header.height.into());
-            target.copy_from(
-                &ImageBuffer::<Rgba<u8>, _>::from_raw(
-                    image_data.width.into(),
-                    image_data.height.into(),
-                    image_data.data,
-                )
-                .ok_or(ReadImageError::IncompleteImage)?,
-                x,
-                y,
-            )?;
-        }
-        color_depth => return Err(ReadImageError::UnsupportedColorDepth(color_depth)),
-    };
-    Ok(true)
-}
-
-fn load_sheet(
-    path: &dyn AsRef<Path>,
-    meta: &dyn sprity_core::SpriteSheetMeta,
-) -> Result<Sheet, LoadDirError> {
-    let content = std::fs::read(path)?;
-    let file = parse_file(&content).map_err(|e| LoadDirError::Parse {
-        filename: meta.name().to_owned(),
-        message: e.to_string(),
-    })?;
-    let sprite_width: u32 = file.header.width.into();
-    let sprite_height: u32 = file.header.height.into();
-    let tags: HashMap<String, &super::chunks::tags::Tag> = file
-        .tags()
-        .map(|tag| (tag.name.to_upper_camel_case(), tag))
-        .collect();
-    // FIXME add support for layer blend mode, opacity and index reordering
-    let layers: HashMap<&str, (usize, &super::chunks::layer::LayerChunk)> = file
-        .normal_layers()
-        .enumerate()
-        .map(|(index, layer)| (layer.name, (index, layer)))
-        .collect();
-    let mut indices: Vec<Option<(usize, usize)>> = vec![None; tags.len() * layers.len()];
-    let image_count: u32 = file
-        .image_cels()
-        .count()
-        .try_into()
-        .expect("More than 2^32 image cels counted");
-    // XXX replace this by usize::log2 once it hits stable rust
-    let cols = (1..).find(|cols| cols * cols >= image_count).unwrap();
-    // XXX replace this by usize::div_ceil once it hits stable rust
-    let rows = (image_count + cols - 1) / cols;
-    let mut image = RgbaImage::new(sprite_width * cols, sprite_height * rows);
-    let mut index = 0u32;
-    for (frame_index, frame) in file.frames.iter().enumerate() {
-        for cel in frame.cels() {
-            let x = index % cols;
-            let y = index / cols;
-            if read_image(
-                &file.header,
+impl<'a> SpriteLoader for AsepriteSpriteLoader<'a> {
+    fn size(&self) -> (u16, u16) {
+        (self.file.header.width, self.file.header.height)
+    }
+    fn images(&self) -> Box<dyn Iterator<Item = Box<dyn ImageLoader + '_>> + '_> {
+        Box::new(self.file.image_cels().map(|(frame, cel)| {
+            Box::new(AsepriteImageLoader {
+                file: &self.file,
+                frame,
                 cel,
-                &mut image.sub_image(
-                    x * sprite_width,
-                    y * sprite_height,
-                    sprite_width,
-                    sprite_height,
-                ),
-            )
-            .map_err(|e| LoadDirError::Other(Box::new(e)))?
-            {
-                index += 1;
-            }
-        }
+            }) as Box<dyn ImageLoader + '_>
+        }))
     }
-    Ok(Sheet { cols, rows, image })
+    fn frames(&self, tag: usize, layer: usize) -> Vec<usize> {
+        todo!()
+    }
+    fn durations(&self, tag: usize) -> Vec<u16> {
+        todo!()
+    }
+}
+
+struct AsepriteImageLoader<'a> {
+    file: &'a File<'a>,
+    frame: usize,
+    cel: ImageCel<'a>,
+}
+
+impl<'a> ImageLoader for AsepriteImageLoader<'a> {
+    fn load<'b>(&self, target: &'b mut [u8]) -> Result<&'b [u8], LoadImageError> {
+        let target_size = usize::from(self.cel.width * self.cel.height * 4);
+        if target.len() < target_size {
+            return Err(LoadImageError::TargetBufferTooSmall);
+        }
+        let target = &mut target[..target_size];
+        match (self.file.header.color_depth, self.cel.compressed) {
+            (ColorDepth::Rgba, false) => target.copy_from_slice(self.cel.data),
+            (ColorDepth::Rgba, true) => decompress(self.cel.data, target)?,
+            (ColorDepth::Grayscale, false) => {
+                grayscale_to_rgba(self.cel.data, target)?;
+            }
+            (ColorDepth::Grayscale, true) => {
+                let mut buf = vec![0u8; (self.cel.width * self.cel.height * 2).into()];
+                decompress(self.cel.data, &mut buf)?;
+                grayscale_to_rgba(&buf, target)?;
+            }
+            (ColorDepth::Indexed, false) => {
+                indexed_to_rgba(
+                    self.cel.data,
+                    self.file
+                        .palette
+                        .as_ref()
+                        .ok_or(LoadImageError::MissingPalette)?,
+                    target,
+                )?;
+            }
+            (ColorDepth::Indexed, true) => {
+                let mut buf = vec![0u8; (self.cel.width * self.cel.height).into()];
+                decompress(self.cel.data, &mut buf)?;
+                indexed_to_rgba(
+                    &buf,
+                    self.file
+                        .palette
+                        .as_ref()
+                        .ok_or(LoadImageError::MissingPalette)?,
+                    target,
+                )?;
+            }
+            (ColorDepth::Unknown(_), _) => return Err(LoadImageError::UnsupportedColorDepth),
+        }
+        if self.cel.compressed {
+            decompress(self.cel.data, target)?;
+        }
+        Ok(target)
+    }
+    fn size(&self) -> (u16, u16) {
+        (self.cel.width, self.cel.height)
+    }
+    fn origin(&self) -> (i16, i16) {
+        (self.cel.x, self.cel.y)
+    }
+}
+
+fn decompress(data: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {
+    let mut decompressor = Decompress::new(true);
+    match decompressor.decompress(data, target, flate2::FlushDecompress::Finish) {
+        Ok(flate2::Status::Ok | flate2::Status::BufError) => Err(LoadImageError::DecompressError),
+        Ok(flate2::Status::StreamEnd) => Ok(()),
+        Err(_) => Err(LoadImageError::DecompressError),
+    }
+}
+
+fn grayscale_to_rgba(source: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {
+    if target.len() != source.len() * 2 {
+        return Err(LoadImageError::InvalidImageData);
+    }
+    for (i, chunk) in source.chunks(2).enumerate() {
+        target[i * 4] = chunk[0];
+        target[i * 4 + 1] = chunk[0];
+        target[i * 4 + 2] = chunk[0];
+        target[i * 4 + 3] = chunk[1];
+    }
+    Ok(())
+}
+
+fn indexed_to_rgba(
+    source: &[u8],
+    palette: &Palette,
+    target: &mut [u8],
+) -> Result<(), LoadImageError> {
+    if target.len() != source.len() * 4 {
+        return Err(LoadImageError::InvalidImageData);
+    }
+    for (i, px) in source.iter().enumerate() {
+        let color = palette.colors[*px as usize];
+        target[i * 4] = color.red;
+        target[i * 4 + 1] = color.green;
+        target[i * 4 + 2] = color.blue;
+        target[i * 4 + 3] = color.alpha;
+    }
+    Ok(())
 }

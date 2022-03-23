@@ -122,7 +122,6 @@ fn gen_sprite_mod(file: &DynamicSpriteSheetMeta) -> TokenStream {
         pub const TAGS: [super :: Tag; #tag_count] = [ #(super :: Tag :: #tag_idents , )* ];
         pub const LAYERS: [super :: Layer; #layer_count] = [ #(super :: Layer :: #layer_idents , )* ];
         */
-
         pub struct #sprite_ident {
             pub tag: #tag_ident,
             pub layers: #layers_ident,
