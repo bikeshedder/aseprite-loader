@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use heck::{ToSnakeCase, ToUpperCamelCase};
+use heck::{ToShoutySnakeCase, ToSnakeCase};
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -10,17 +10,27 @@ pub fn aseprite_dir(
     loader: &dyn sprity_core::Loader,
     dir: &dyn AsRef<Path>,
 ) -> Result<TokenStream, LoadDirError> {
-    let files = loader.load_dir_meta(dir)?;
-
-    if files.is_empty() {
+    let paths = loader.list_dir(dir)?;
+    if paths.is_empty() {
         return Err(LoadDirError::EmptyDirectory {
             ext: ".aseprite/.ase",
             dir: dir.as_ref().to_string_lossy().into(),
         });
     }
+    let metas: Vec<DynamicSpriteSheetMeta> = paths
+        .into_iter()
+        .map(
+            |(name, path)| -> Result<DynamicSpriteSheetMeta, LoadDirError> {
+                let data = std::fs::read(path)?;
+                let loader = loader.load_sprite(&data)?;
+                let meta = DynamicSpriteSheetMeta::from_loader(name, loader.as_ref())?;
+                Ok(meta)
+            },
+        )
+        .try_collect()?;
 
-    let sprite_structs = files.iter().map(gen_sprite_mod).collect::<Vec<_>>();
-    let sprite_enum = gen_enum(&files);
+    let sprite_structs = metas.iter().map(gen_sprite_mod).collect::<Vec<_>>();
+    let sprite_enum = gen_enum(&metas);
 
     Ok(quote! {
         #sprite_enum
@@ -29,31 +39,20 @@ pub fn aseprite_dir(
 }
 
 fn gen_enum(files: &[DynamicSpriteSheetMeta]) -> TokenStream {
-    let sprite_names = files
-        .iter()
-        .map(|f| f.name.to_upper_camel_case())
-        .collect::<Vec<_>>();
+    let sprite_names = files.iter().map(|f| f.name.to_owned()).collect::<Vec<_>>();
     let sprite_idents = sprite_names
         .iter()
         .map(|name| format_ident!("{}", name))
         .collect::<Vec<_>>();
     let tags = files
         .iter()
-        .flat_map(|f| {
-            f.tags
-                .iter()
-                .map(|tag| format_ident!("{}", tag.to_upper_camel_case()))
-        })
+        .flat_map(|f| f.tags.iter().map(|tag| format_ident!("{}", tag)))
         .sorted()
         .dedup()
         .collect::<Vec<_>>();
     let layers = files
         .iter()
-        .flat_map(|f| {
-            f.layers
-                .iter()
-                .map(|layer| format_ident!("{}", layer.to_upper_camel_case()))
-        })
+        .flat_map(|f| f.layers.iter().map(|layer| format_ident!("{}", layer)))
         .sorted()
         .dedup()
         .collect::<Vec<_>>();
@@ -85,43 +84,34 @@ fn gen_enum(files: &[DynamicSpriteSheetMeta]) -> TokenStream {
     }
 }
 
-fn gen_sprite_mod(file: &DynamicSpriteSheetMeta) -> TokenStream {
-    let sprite_name = file.name.to_upper_camel_case();
+fn gen_sprite_mod(meta: &DynamicSpriteSheetMeta) -> TokenStream {
+    let sprite_name = &meta.name;
     let sprite_ident = format_ident!("{}", sprite_name);
-    let tag_ident = format_ident!("{}Tag", file.name.to_upper_camel_case());
-    let layer_ident = format_ident!("{}Layer", file.name.to_upper_camel_case());
-    let layers_ident = format_ident!("{}Layers", file.name.to_upper_camel_case());
-    let tag_names = file
-        .tags
-        .iter()
-        .map(|tag| tag.to_upper_camel_case())
-        .collect::<Vec<_>>();
+    let tag_ident = format_ident!("{}Tag", sprite_name);
+    let tags_constant_ident = format_ident!("{}_TAGS", sprite_name.to_shouty_snake_case());
+    let layer_ident = format_ident!("{}Layer", sprite_name);
+    let layers_ident = format_ident!("{}Layers", sprite_name);
+    let layers_constant_ident = format_ident!("{}_LAYERS", sprite_name.to_shouty_snake_case());
+    let tag_names = &meta.tags;
     let tag_idents = tag_names
         .iter()
         .map(|tag_name| format_ident!("{}", tag_name))
         .collect::<Vec<_>>();
     let tag_count = tag_idents.len();
-    let layer_names = file
-        .layers
-        .iter()
-        .map(|layer| layer.to_upper_camel_case())
-        .collect::<Vec<_>>();
+    let layer_names = &meta.layers;
     let layer_idents = layer_names
         .iter()
         .map(|layer_name| format_ident!("{}", layer_name))
         .collect::<Vec<_>>();
     let layer_count = layer_idents.len();
-    let layer_flags = file
+    let layer_flags = meta
         .layers
         .iter()
         .map(|layer| format_ident!("{}", layer.to_snake_case()))
         .collect::<Vec<_>>();
     quote! {
-        /*
-        pub const NAME: &str = #sprite_name;
-        pub const TAGS: [super :: Tag; #tag_count] = [ #(super :: Tag :: #tag_idents , )* ];
-        pub const LAYERS: [super :: Layer; #layer_count] = [ #(super :: Layer :: #layer_idents , )* ];
-        */
+        //pub const #tags_constant_ident: [super :: Tag; #tag_count] = [ #(super :: Tag :: #tag_idents , )* ];
+        //pub const #layers_constant_ident: [super :: Layer; #layer_count] = [ #(su, StaticSpriteSheetMeta, TagIteratorper :: Layer :: #layer_idents , )* ];
         pub struct #sprite_ident {
             pub tag: #tag_ident,
             pub layers: #layers_ident,

@@ -16,7 +16,3 @@ sprity-core = { path = "../sprity-core" }
 strum = "0.24.0"
 strum_macros = "0.24.0"
 thiserror = "1.0.30"
-
-[[bin]]
-name = "sprity-aseprite"
-path = "src/main.rs"

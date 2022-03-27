@@ -1,66 +1,91 @@
+use itertools::Itertools;
+
 use super::{
     chunk::Chunk,
-    chunks::{
-        cel::ImageCel,
-        layer::{LayerChunk, LayerType},
-        tags::Tag,
-    },
+    chunks::{cel::CelChunk, layer::LayerChunk, tags::Tag},
     color_depth::ColorDepth,
     errors::ParseError,
-    frame::{parse_frames, Frame},
-    header::{parse_header, Header},
+    frame::Frame,
+    header::Header,
     palette::{create_palette, Palette},
+    raw_file::parse_raw_file,
+    scalars::Word,
 };
 
 #[derive(Debug)]
 pub struct File<'a> {
     pub header: Header,
-    pub frames: Vec<Frame<'a>>,
     pub palette: Option<Palette>,
-}
-
-impl<'a> File<'a> {
-    pub fn normal_layers(&self) -> impl Iterator<Item = &LayerChunk> {
-        self.frames.iter().flat_map(|frame| {
-            frame.chunks.iter().filter_map(|chunk| match chunk {
-                Chunk::Layer(chunk) if chunk.layer_type == LayerType::Normal => Some(chunk),
-                _ => None,
-            })
-        })
-    }
-    pub fn tags(&self) -> impl Iterator<Item = &Tag> {
-        self.frames
-            .iter()
-            .flat_map(|frame| {
-                frame.chunks.iter().filter_map(|chunk| match chunk {
-                    Chunk::Tags(chunk) => Some(&chunk.tags),
-                    _ => None,
-                })
-            })
-            .flat_map(|tags| tags.iter())
-    }
-    pub fn image_cels(&self) -> impl Iterator<Item = (usize, ImageCel)> {
-        self.frames
-            .iter()
-            .enumerate()
-            .flat_map(|(frame_index, frame)| frame.image_cels().map(move |cel| (frame_index, cel)))
-    }
+    pub layers: Vec<LayerChunk<'a>>,
+    pub frames: Vec<Frame<'a>>,
+    pub tags: Vec<Tag<'a>>,
 }
 
 pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
-    let (input, header) = parse_header(input)?;
-    let (_, frames) = parse_frames(input)?;
-    let palette = match header.color_depth {
+    let raw_file = parse_raw_file(input)?;
+    let palette = match raw_file.header.color_depth {
         ColorDepth::Indexed => Some(
-            create_palette(&header, &frames)
+            create_palette(&raw_file.header, &raw_file.frames)
                 .map_err(|e| nom::Err::Failure(ParseError::PaletteError(e)))?,
         ),
         _ => None,
     };
+    let mut frames = Vec::<(Word, Vec<CelChunk>)>::new();
+    let mut layers = Vec::<LayerChunk>::new();
+    let mut tags = Vec::<Tag>::new();
+    for raw_frame in raw_file.frames {
+        let mut cels = Vec::<CelChunk>::new();
+        for chunk in raw_frame.chunks {
+            match chunk {
+                Chunk::Palette0004(_) => {}
+                Chunk::Palette0011(_) => {}
+                Chunk::Layer(layer) => layers.push(layer),
+                Chunk::Cel(cel) => cels.push(cel),
+                Chunk::CelExtra(_) => {}
+                Chunk::ColorProfile(_) => {}
+                Chunk::ExternalFiles(_) => {}
+                Chunk::Mask(_) => {}
+                Chunk::Path => {}
+                Chunk::Tags(tags_chunk) => tags.extend(tags_chunk.tags),
+                Chunk::Palette(_) => {}
+                Chunk::UserData(_) => {}
+                Chunk::Slice(_) => {}
+                Chunk::Tileset(_) => {}
+                Chunk::Unsupported(_) => {}
+            }
+        }
+        frames.push((raw_frame.duration, cels));
+    }
+    let frames = frames
+        .into_iter()
+        .map(|(duration, frame_cels)| {
+            Ok(Frame {
+                duration,
+                cels: {
+                    // Insert cels in the cels vector so that a direct lookup
+                    // by layer index is possible.
+                    let mut cels: Vec<Option<CelChunk>> = Vec::with_capacity(layers.len());
+                    for _ in 0..layers.len() {
+                        cels.push(None);
+                    }
+                    for cel in frame_cels {
+                        let layer_index: usize = cel.layer_index.into();
+                        if layer_index > layers.len() {
+                            return Err(nom::Err::Failure(ParseError::LayerIndexOutOfBounds));
+                        }
+                        cels[layer_index] = Some(cel);
+                    }
+                    cels
+                },
+            })
+        })
+        .try_collect()?;
     Ok(File {
-        header,
-        frames,
+        header: raw_file.header,
         palette,
+        layers,
+        frames,
+        tags,
     })
 }
 

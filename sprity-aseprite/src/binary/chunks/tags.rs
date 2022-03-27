@@ -1,8 +1,10 @@
+use std::ops::Range;
+
 use nom::{bytes::complete::take, multi::count};
 use strum_macros::FromRepr;
 
 use crate::binary::{
-    errors::ParseResult,
+    errors::{ParseError, ParseResult},
     scalars::{byte, parse_string, word, Byte, Word},
 };
 
@@ -14,8 +16,7 @@ pub struct TagsChunk<'a> {
 #[allow(deprecated)]
 #[derive(Debug)]
 pub struct Tag<'a> {
-    pub from_frame: Word,
-    pub to_frame: Word,
+    pub frames: Range<Word>,
     pub animation_direction: AnimationDirection,
     #[deprecated]
     pub color: [u8; 3],
@@ -46,6 +47,11 @@ pub fn parse_tags_chunk(input: &[u8]) -> ParseResult<TagsChunk> {
 pub fn parse_tag(input: &[u8]) -> ParseResult<Tag> {
     let (input, from_frame) = word(input)?;
     let (input, to_frame) = word(input)?;
+    if from_frame > to_frame {
+        return Err(nom::Err::Failure(ParseError::InvalidFrameRange(
+            from_frame, to_frame,
+        )));
+    }
     let (input, animation_direction) = byte(input)?;
     let animation_direction = AnimationDirection::from(animation_direction);
     let (input, _) = take(8usize)(input)?;
@@ -56,8 +62,7 @@ pub fn parse_tag(input: &[u8]) -> ParseResult<Tag> {
     Ok((
         input,
         Tag {
-            from_frame,
-            to_frame,
+            frames: (from_frame..to_frame + 1),
             animation_direction,
             color: [color[0], color[1], color[2]],
             name,
@@ -67,22 +72,13 @@ pub fn parse_tag(input: &[u8]) -> ParseResult<Tag> {
 
 #[test]
 fn test_tags() {
-    use crate::binary::{chunk::Chunk, file::parse_file};
+    use crate::binary::file::parse_file;
     let input = std::fs::read("./tests/tags.aseprite").unwrap();
     let file = parse_file(&input).unwrap();
     assert_eq!(file.frames.len(), 1);
     assert_eq!(file.frames[0].duration, 100);
-    let tags = file.frames[0]
-        .chunks
-        .iter()
-        .filter_map(|chunk| match chunk {
-            Chunk::Tags(layer) => Some(layer),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(tags.len(), 1);
-    assert_eq!(tags[0].tags.len(), 3);
-    assert_eq!(tags[0].tags[0].name, "Tag 1");
-    assert_eq!(tags[0].tags[1].name, "Tag 2");
-    assert_eq!(tags[0].tags[2].name, "Tag 3");
+    assert_eq!(file.tags.len(), 3);
+    assert_eq!(file.tags[0].name, "Tag 1");
+    assert_eq!(file.tags[1].name, "Tag 2");
+    assert_eq!(file.tags[2].name, "Tag 3");
 }

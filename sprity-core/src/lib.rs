@@ -1,19 +1,20 @@
 mod color;
 mod loader;
 mod meta;
-mod sheet;
 
 pub use color::Color;
 pub use loader::{
-    ImageLoader, ListDirError, LoadDirError, LoadImageError, LoadSpriteError, Loader, SpriteLoader,
+    Frame, ImageLoader, ListDirError, LoadDirError, LoadImageError, LoadSpriteError, Loader,
+    SpriteLoader,
 };
-pub use meta::{
-    DynamicSpriteSheetMeta, LayerIterator, SpriteSheetMeta, StaticSpriteSheetMeta, TagIterator,
-};
-pub use sheet::Sheet;
+pub use meta::{DynamicSpriteSheetMeta, SpriteSheetMeta};
 
 pub trait Sprite {
     fn name(&self) -> &str;
+}
+
+pub trait SpriteWithMeta: Sprite {
+    fn meta() -> SpriteSheetMeta;
 }
 
 pub trait Tag {

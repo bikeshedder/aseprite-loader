@@ -2,7 +2,10 @@ use std::str::Utf8Error;
 
 use nom::IResult;
 
-use super::{palette::PaletteError, scalars::Dword};
+use super::{
+    palette::PaletteError,
+    scalars::{Dword, Word},
+};
 
 #[derive(Debug, strum_macros::Display)]
 pub enum ParseError<'a> {
@@ -20,6 +23,11 @@ pub enum ParseError<'a> {
     /// The uses index colors but the palette could not be
     /// generated due to errors in the palette chunks.
     PaletteError(PaletteError),
+    /// The range of frame indices was invalid (from > to)
+    InvalidFrameRange(Word, Word),
+    /// This variant is used when a layer index is out
+    /// of bounds (layer_index >= layer_count)
+    LayerIndexOutOfBounds,
     /// This variant is used when the nom combinators return
     /// an error.
     Nom(nom::error::Error<&'a [u8]>),

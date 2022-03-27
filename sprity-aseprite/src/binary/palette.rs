@@ -5,8 +5,8 @@ pub use sprity_core::Color;
 use super::{
     chunk::Chunk,
     chunks::{old_palette::OldPaletteChunk, palette::PaletteChunk},
-    frame::Frame,
     header::Header,
+    raw_frame::RawFrame,
 };
 
 #[derive(Debug)]
@@ -22,7 +22,7 @@ impl Default for Palette {
     }
 }
 
-pub fn create_palette(header: &Header, frames: &[Frame]) -> Result<Palette, PaletteError> {
+pub fn create_palette(header: &Header, frames: &[RawFrame]) -> Result<Palette, PaletteError> {
     let mut palette = Palette::default();
     let palette_chunks: Vec<_> = frames
         .iter()
