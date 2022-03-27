@@ -124,9 +124,11 @@ impl AsepriteSpriteLoader<'_> {
                         }
                         _ => return Err(LoadSpriteError::Parse { message: format!("Cel(frame={}, layer={}) referenced by tag {:?} is neither a image cel nor a linked cel", frame_index, layer_index, tag.name)})
                     };
+                    let image = &image_vec[image_index];
                     image_refs.push(Frame {
                         duration: frame.duration,
                         origin: (cel.x, cel.y),
+                        size: (image.width, image.height),
                         image_index,
                     });
                 }

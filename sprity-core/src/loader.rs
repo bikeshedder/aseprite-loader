@@ -46,6 +46,7 @@ pub enum ListDirError {
 pub struct Frame {
     pub duration: u16,
     pub origin: (i16, i16),
+    pub size: (u16, u16),
     pub image_index: usize,
 }
 
