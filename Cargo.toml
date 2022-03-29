@@ -2,6 +2,13 @@
 name = "sprity"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
+authors = ["Michael P. Jung <michael.jung@terreon.de>"]
+description = "Sprite sheet loader"
+keywords = ["sprite", "sheet", "texture", "atlas", "bevy"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/bikeshedder/sprity"
+readme = "README.md"
 
 [dependencies]
 sprity-aseprite = { path = "./sprity-aseprite" }
