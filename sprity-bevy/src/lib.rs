@@ -4,12 +4,12 @@ use bevy::{
     asset::{AssetLoader, LoadedAsset},
     math::Vec2,
     prelude::{
-        debug, AddAsset, Bundle, Component, GlobalTransform, Handle, Image, Plugin, ResMut,
-        Transform,
+        debug, AddAsset, Assets, Bundle, Component, GlobalTransform, Handle, Image, Plugin, Query,
+        Res, Transform, Visibility,
     },
     reflect::TypeUuid,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
-    sprite::{Rect, TextureAtlas},
+    sprite::{Rect, TextureAtlas, TextureAtlasSprite},
 };
 
 #[derive(Debug, Clone, TypeUuid)]
@@ -45,7 +45,7 @@ impl AssetLoader for SprityAssetLoader {
                     },
                     TextureDimension::D2,
                     texture_data,
-                    TextureFormat::Rgba8Uint,
+                    TextureFormat::Rgba8UnormSrgb,
                 )),
             );
             let atlas: Handle<TextureAtlas> = load_context.set_labeled_asset(
@@ -81,9 +81,12 @@ pub struct SpritySprite {}
 
 #[derive(Debug, Bundle, Default)]
 pub struct SprityBundle {
+    pub sprity_asset: Handle<SprityAsset>,
+    pub texture_atlas: Handle<TextureAtlas>,
+    pub sprite: TextureAtlasSprite,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
-    pub sprity_asset: Handle<SprityAsset>,
+    pub visibility: Visibility,
 }
 
 pub struct SprityPlugin;
@@ -91,7 +94,29 @@ pub struct SprityPlugin;
 impl Plugin for SprityPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_asset::<SprityAsset>()
-            .init_asset_loader::<SprityAssetLoader>();
+            .init_asset_loader::<SprityAssetLoader>()
+            .add_system(update_sprites);
         // FIXME
+    }
+}
+
+pub(crate) fn update_sprites(
+    assets: Res<Assets<SprityAsset>>,
+    mut q: Query<(
+        &Handle<SprityAsset>,
+        &mut Handle<TextureAtlas>,
+        &mut TextureAtlasSprite,
+    )>,
+) {
+    for (asset_handle, mut atlas, mut sprite) in q.iter_mut() {
+        // FIXME This code updates the atlas and sprite even if nothing has
+        // changed. This code needs to be modified anyways as animation and
+        // layers are the next thing to be implemented.
+        if let Some(asset) = assets.get(asset_handle) {
+            *atlas = asset.atlas.as_weak();
+            *sprite = TextureAtlasSprite {
+                ..Default::default()
+            }
+        }
     }
 }
