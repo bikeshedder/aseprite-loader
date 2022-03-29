@@ -6,7 +6,7 @@ use std::{
 
 use flate2::Decompress;
 use heck::ToUpperCamelCase;
-use sprity_core::{Frame, LoadImageError, LoadSpriteError, SpriteLoader};
+use sprity_core::{Frame, ImageLoader, LoadImageError, LoadSpriteError, SpriteLoader};
 
 use super::{
     chunks::{cel::CelContent, layer::LayerType},
@@ -18,9 +18,14 @@ use super::{
 
 static ASEPRITE_EXTENSIONS: &[&str] = &["ase", "aseprite"];
 
+#[derive(Default)]
 pub struct BinaryLoader {}
 
-impl BinaryLoader {}
+impl BinaryLoader {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 impl sprity_core::Loader for BinaryLoader {
     fn list_dir(
@@ -57,6 +62,11 @@ struct AsepriteSpriteLoader<'a> {
     // list of durations, origins and image indices.
     frames: Vec<Vec<Frame>>,
     images: Vec<Image<'a>>,
+}
+
+struct AsepriteImageLoader<'a> {
+    file: &'a File<'a>,
+    image: &'a Image<'a>,
 }
 
 impl AsepriteSpriteLoader<'_> {
@@ -124,11 +134,9 @@ impl AsepriteSpriteLoader<'_> {
                         }
                         _ => return Err(LoadSpriteError::Parse { message: format!("Cel(frame={}, layer={}) referenced by tag {:?} is neither a image cel nor a linked cel", frame_index, layer_index, tag.name)})
                     };
-                    let image = &image_vec[image_index];
                     image_refs.push(Frame {
                         duration: frame.duration,
                         origin: (cel.x, cel.y),
-                        size: (image.width, image.height),
                         image_index,
                     });
                 }
@@ -158,34 +166,41 @@ impl<'a> SpriteLoader for AsepriteSpriteLoader<'a> {
     fn frames(&self, tag: usize, layer: usize) -> &[Frame] {
         &self.frames[tag * self.layers.len() + layer]
     }
-    fn load_image<'b>(
-        &self,
-        index: usize,
-        target: &'b mut [u8],
-    ) -> Result<&'b [u8], LoadImageError> {
-        let image = self
-            .images
-            .get(index)
-            .ok_or(LoadImageError::InvalidImageIndex)?;
-        let target_size = usize::from(image.width * image.height * 4);
+    fn images(&self) -> usize {
+        self.images.len()
+    }
+    fn image_loader(&self, index: usize) -> Box<dyn ImageLoader + '_> {
+        Box::new(AsepriteImageLoader {
+            file: &self.file,
+            image: &self.images[index],
+        })
+    }
+}
+
+impl<'a> ImageLoader for AsepriteImageLoader<'a> {
+    fn size(&self) -> (u16, u16) {
+        (self.image.width, self.image.height)
+    }
+    fn load<'b>(&self, target: &'b mut [u8]) -> Result<&'b [u8], LoadImageError> {
+        let target_size = usize::from(self.image.width * self.image.height * 4);
         if target.len() < target_size {
             return Err(LoadImageError::TargetBufferTooSmall);
         }
         let target = &mut target[..target_size];
-        match (self.file.header.color_depth, image.compressed) {
-            (ColorDepth::Rgba, false) => target.copy_from_slice(image.data),
-            (ColorDepth::Rgba, true) => decompress(image.data, target)?,
+        match (self.file.header.color_depth, self.image.compressed) {
+            (ColorDepth::Rgba, false) => target.copy_from_slice(self.image.data),
+            (ColorDepth::Rgba, true) => decompress(self.image.data, target)?,
             (ColorDepth::Grayscale, false) => {
-                grayscale_to_rgba(image.data, target)?;
+                grayscale_to_rgba(self.image.data, target)?;
             }
             (ColorDepth::Grayscale, true) => {
-                let mut buf = vec![0u8; (image.width * image.height * 2).into()];
-                decompress(image.data, &mut buf)?;
+                let mut buf = vec![0u8; (self.image.width * self.image.height * 2).into()];
+                decompress(self.image.data, &mut buf)?;
                 grayscale_to_rgba(&buf, target)?;
             }
             (ColorDepth::Indexed, false) => {
                 indexed_to_rgba(
-                    image.data,
+                    self.image.data,
                     self.file
                         .palette
                         .as_ref()
@@ -194,8 +209,8 @@ impl<'a> SpriteLoader for AsepriteSpriteLoader<'a> {
                 )?;
             }
             (ColorDepth::Indexed, true) => {
-                let mut buf = vec![0u8; (image.width * image.height).into()];
-                decompress(image.data, &mut buf)?;
+                let mut buf = vec![0u8; (self.image.width * self.image.height).into()];
+                decompress(self.image.data, &mut buf)?;
                 indexed_to_rgba(
                     &buf,
                     self.file

@@ -6,12 +6,9 @@ use std::{
 use thiserror::Error;
 
 pub trait Loader {
-    /// List all file names in a given directory that match
-    /// the given list of sprite sheet metadata. The list
-    /// of filenames is in the same order as the given list
-    /// of metadata.
+    /// List all sprite and file names in a given directory.
     fn list_dir(&self, dir: &dyn AsRef<Path>) -> Result<Vec<(String, PathBuf)>, ListDirError>;
-    /// Load a sprite given its data and metadata.
+    /// Load a sprite given its data
     fn load_sprite<'a>(
         &self,
         data: &'a [u8],
@@ -46,7 +43,6 @@ pub enum ListDirError {
 pub struct Frame {
     pub duration: u16,
     pub origin: (i16, i16),
-    pub size: (u16, u16),
     pub image_index: usize,
 }
 
@@ -59,13 +55,15 @@ pub trait SpriteLoader {
     fn layers(&self) -> &[String];
     /// Get the image indices for a given tag and layer
     fn frames(&self, tag: usize, layer: usize) -> &[Frame];
-    /// Load the image into the provided target buffer and return the
-    /// slice of data that was actually loaded.
-    fn load_image<'a>(
-        &self,
-        index: usize,
-        target: &'a mut [u8],
-    ) -> Result<&'a [u8], LoadImageError>;
+    /// Get image count
+    fn images(&self) -> usize;
+    /// Get image loader for a given image index
+    fn image_loader(&self, index: usize) -> Box<dyn ImageLoader + '_>;
+}
+
+pub trait ImageLoader {
+    fn size(&self) -> (u16, u16);
+    fn load<'a>(&self, target: &'a mut [u8]) -> Result<&'a [u8], LoadImageError>;
 }
 
 #[derive(Error, Debug)]
@@ -80,22 +78,8 @@ pub enum LoadSpriteError {
     FrameIndexOutOfRange(usize),
 }
 
-pub trait ImageLoader {
-    /// Load the image into the provided target buffer and return the
-    /// slice of data that was actually loaded.
-    fn load<'a>(&self, target: &'a mut [u8]) -> Result<&'a [u8], LoadImageError>;
-    fn size(&self) -> (u16, u16);
-    /// Get the image size in bytes: width * height * 4
-    fn bytes(&self) -> usize {
-        let size = self.size();
-        (size.0 * size.1 * 4).into()
-    }
-}
-
 #[derive(Error, Debug)]
 pub enum LoadImageError {
-    #[error("invalid image index")]
-    InvalidImageIndex,
     #[error("target buffer too small")]
     TargetBufferTooSmall,
     #[error("missing palette")]

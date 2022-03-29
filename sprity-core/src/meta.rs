@@ -8,6 +8,7 @@ pub struct SpriteSheetMeta {
     pub layers: &'static [&'static str],
 }
 
+#[derive(Clone, Debug)]
 pub struct DynamicSpriteSheetMeta {
     pub name: String,
     pub tags: Vec<String>,

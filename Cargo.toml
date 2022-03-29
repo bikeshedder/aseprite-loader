@@ -11,6 +11,7 @@ sprity-core = { path = "./sprity-core" }
 members = [
     "sprity-aseprite",
     "sprity-aseprite-macros",
+    "sprity-bevy",
     "sprity-codegen",
     "sprity-cli",
     "sprity-core",

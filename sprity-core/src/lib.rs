@@ -1,6 +1,7 @@
 mod color;
 mod loader;
 mod meta;
+pub mod sheet;
 
 pub use color::Color;
 pub use loader::{
