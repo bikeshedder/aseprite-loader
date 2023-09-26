@@ -86,9 +86,9 @@ pub struct SpritySprite {}
 
 #[derive(Debug, Component)]
 pub struct SprityLayer {
-    tag_index: usize,
-    layer_index: usize,
-    frame: usize,
+    pub tag_index: usize,
+    pub layer_index: usize,
+    pub frame: usize,
 }
 
 #[derive(Debug, Bundle, Default)]
