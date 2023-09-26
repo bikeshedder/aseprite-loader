@@ -43,7 +43,7 @@ pub fn parse_chunks(input: &[u8], chunk_count: usize) -> ParseResult<Vec<Chunk>>
     count(parse_chunk, chunk_count)(input)
 }
 
-pub fn parse_chunk<'a>(input: &'a [u8]) -> ParseResult<Chunk<'a>> {
+pub fn parse_chunk(input: &[u8]) -> ParseResult<Chunk<'_>> {
     let (input, size) = dword_size(input, ParseError::InvalidFrameSize)?;
     let (rest, input) = take(size - 4)(input)?;
     let (chunk_data, chunk_type) = parse_chunk_type(input)?;

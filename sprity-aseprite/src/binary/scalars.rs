@@ -84,7 +84,7 @@ pub fn parse_dword_as_u8<'a>(input: &'a [u8], e: ParseError<'a>) -> ParseResult<
     Ok((input, size))
 }
 
-pub fn parse_string<'a>(input: &'a [u8]) -> ParseResult<&'a str> {
+pub fn parse_string(input: &[u8]) -> ParseResult<&str> {
     map_res(flat_map(word, take), std::str::from_utf8)(input)
 }
 
