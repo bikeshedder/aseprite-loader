@@ -14,6 +14,7 @@ pub struct SliceChunk<'a> {
 }
 
 bitflags! {
+    #[derive(Debug, Copy, Clone)]
     pub struct SliceFlags: Dword {
         const NINE_PATCH = 0x01;
         const PIVOT = 0x02;

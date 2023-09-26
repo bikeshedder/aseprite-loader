@@ -16,6 +16,7 @@ pub struct CelExtraChunk<'a> {
 }
 
 bitflags! {
+    #[derive(Debug)]
     pub struct CelExtraFlags: Dword {
         const PRECISE_BOUNDS_ARE_SET = 0x1;
     }

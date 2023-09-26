@@ -10,6 +10,6 @@ proc-macro = true
 sprity-aseprite = { path = "../sprity-aseprite" }
 sprity-codegen = { path = "../sprity-codegen" }
 sprity-core = { path = "../sprity-core" }
-syn = "1.0.86"
-proc-macro2 = "1.0"
-proc-macro-error = "1.0.4"
+syn = "2"
+proc-macro2 = "1"
+proc-macro-error = "1"

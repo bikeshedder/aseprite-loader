@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
-bevy = "0.6"
+anyhow = "1"
+bevy = "0.11"
 sprity-aseprite = { path = "../sprity-aseprite" }
 sprity-core = { path = "../sprity-core" }
-rectangle-pack = "0.4.2"
+rectangle-pack = "0.4"

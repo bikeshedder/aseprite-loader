@@ -19,6 +19,7 @@ pub struct LayerChunk<'a> {
 }
 
 bitflags! {
+    #[derive(Debug)]
     pub struct LayerFlags: Word {
         const VISIBLE = 0x1;
         const EDITABLE = 0x2;

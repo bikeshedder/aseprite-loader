@@ -1,21 +1,26 @@
-use sprity_core::{sheet::SpriteSheet, Loader};
+use sprity_core::{
+    sheet::{Sprite, SpriteSheet},
+    Loader,
+};
 
 use bevy::{
     asset::{AssetLoader, LoadedAsset},
-    math::Vec2,
+    math::{Rect, Vec2, Vec3},
     prelude::{
-        debug, AddAsset, Assets, Bundle, Component, GlobalTransform, Handle, Image, Plugin, Query,
-        Res, Transform, Visibility,
+        debug, AddAsset, Assets, BuildChildren, Bundle, Children, Commands, Component, Entity,
+        GlobalTransform, Handle, Image, Plugin, PreUpdate, Query, Res, Transform, Visibility,
     },
-    reflect::TypeUuid,
+    reflect::{TypePath, TypeUuid},
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
-    sprite::{Rect, TextureAtlas, TextureAtlasSprite},
+    sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
 };
 
-#[derive(Debug, Clone, TypeUuid)]
+#[derive(Debug, Clone, TypeUuid, TypePath)]
 #[uuid = "442cb6e1-0463-4d41-8e90-3b2c3b0a13a9"]
 pub struct SprityAsset {
     pub atlas: Handle<TextureAtlas>,
+    // FIXME add access to the tags, layers and frames
+    pub sprites: Vec<Sprite>,
 }
 
 #[derive(Default)]
@@ -66,7 +71,7 @@ impl AssetLoader for SprityAssetLoader {
                     texture_handles: None,
                 }),
             );
-            load_context.set_default_asset(LoadedAsset::new(SprityAsset { atlas }));
+            load_context.set_default_asset(LoadedAsset::new(SprityAsset { atlas, sprites }));
             Ok(())
         })
     }
@@ -78,6 +83,13 @@ impl AssetLoader for SprityAssetLoader {
 
 #[derive(Debug, Component)]
 pub struct SpritySprite {}
+
+#[derive(Debug, Component)]
+pub struct SprityLayer {
+    tag_index: usize,
+    layer_index: usize,
+    frame: usize,
+}
 
 #[derive(Debug, Bundle, Default)]
 pub struct SprityBundle {
@@ -95,20 +107,65 @@ impl Plugin for SprityPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_asset::<SprityAsset>()
             .init_asset_loader::<SprityAssetLoader>()
-            .add_system(update_sprites);
+            .add_systems(PreUpdate, update_sprites);
         // FIXME
     }
 }
 
 pub(crate) fn update_sprites(
+    mut commands: Commands,
     assets: Res<Assets<SprityAsset>>,
-    mut q: Query<(
-        &Handle<SprityAsset>,
+    mut q: Query<(Entity, Option<&Children>, &Handle<SprityAsset>)>,
+    /*mut layer_query: Query<(
+        &SprityLayer,
         &mut Handle<TextureAtlas>,
         &mut TextureAtlasSprite,
-    )>,
+    )>,*/
 ) {
-    for (asset_handle, mut atlas, mut sprite) in q.iter_mut() {
+    for (parent, children, asset_handle) in q.iter_mut() {
+        if children.is_some() {
+            continue;
+        }
+        if let Some(asset) = assets.get(asset_handle) {
+            println!("Inserting children...");
+            commands.entity(parent).with_children(|parent| {
+                parent.spawn(SpriteSheetBundle {
+                    texture_atlas: asset.atlas.clone(),
+                    sprite: TextureAtlasSprite {
+                        index: 0,
+                        ..Default::default()
+                    },
+                    transform: Transform {
+                        translation: Vec3::new(
+                            asset.sprites[0].x as f32,
+                            asset.sprites[0].y as f32,
+                            0.0,
+                        ),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+                parent.spawn(SpriteSheetBundle {
+                    texture_atlas: asset.atlas.clone(),
+                    sprite: TextureAtlasSprite {
+                        index: 1,
+                        ..Default::default()
+                    },
+                    transform: Transform {
+                        translation: Vec3::new(
+                            asset.sprites[1].x as f32,
+                            asset.sprites[1].y as f32,
+                            0.0,
+                        ),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+            });
+        }
+    }
+    /*
+    for (entity, children, asset_handle, mut atlas, mut sprite) in q.iter_mut() {
         // FIXME This code updates the atlas and sprite even if nothing has
         // changed. This code needs to be modified anyways as animation and
         // layers are the next thing to be implemented.
@@ -119,4 +176,5 @@ pub(crate) fn update_sprites(
             }
         }
     }
+     */
 }

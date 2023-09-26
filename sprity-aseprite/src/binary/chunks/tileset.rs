@@ -53,6 +53,7 @@ pub struct TilesetTiles<'a> {
 }
 
 bitflags! {
+    #[derive(Debug)]
     pub struct TilesetFlags: Dword {
         /// 1 - Include link to external file
         const EXTERNAL_FILE = 1;
