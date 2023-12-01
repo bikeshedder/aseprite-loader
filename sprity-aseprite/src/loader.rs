@@ -68,7 +68,6 @@ impl AsepriteFile<'_> {
                 let mut image_refs: Vec<Frame> = Vec::new();
                 for frame_index in tag.frames.clone() {
                     let frame_index = usize::from(frame_index);
-                    // FIXME make sure the frame_index is < frames
                     let frame = file
                         .frames
                         .get(frame_index)
