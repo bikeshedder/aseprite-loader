@@ -28,6 +28,9 @@ pub enum ParseError<'a> {
     /// This variant is used when a layer index is out
     /// of bounds (layer_index >= layer_count)
     LayerIndexOutOfBounds,
+    /// This variant is used when a unsupported property
+    /// type is found in the user data.
+    InvalidPropertyType(Word),
     /// This variant is used when the nom combinators return
     /// an error.
     Nom(nom::error::Error<&'a [u8]>),

@@ -9,7 +9,7 @@
 use nom::{
     bytes::complete::take,
     combinator::{flat_map, map_res},
-    number::complete::{le_i16, le_i32, le_u16, le_u32, le_u8},
+    number::complete::{le_i16, le_i32, le_u128, le_u16, le_u32, le_u8},
 };
 
 use super::errors::{ParseError, ParseResult};
@@ -19,6 +19,29 @@ pub type Word = u16;
 pub type Short = i16;
 pub type Dword = u32;
 pub type Long = i32;
+pub type Float = f32;
+pub type Double = f64;
+pub type Qword = u64;
+pub type Long64 = i64;
+pub type Uuid = u128;
+
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+pub struct Point {
+    pub x: Long,
+    pub y: Long,
+}
+
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+pub struct Size {
+    pub width: Long,
+    pub height: Long,
+}
+
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+pub struct Rect {
+    pub point: Point,
+    pub size: Size,
+}
 
 #[derive(Debug, Copy, Clone)]
 pub struct Fixed(u16, u16);
@@ -63,6 +86,24 @@ pub fn long(input: &[u8]) -> ParseResult<'_, Long> {
     le_i32(input)
 }
 
+pub fn parse_point(input: &[u8]) -> ParseResult<'_, Point> {
+    let (input, x) = long(input)?;
+    let (input, y) = long(input)?;
+    Ok((input, Point { x, y }))
+}
+
+pub fn parse_size(input: &[u8]) -> ParseResult<'_, Size> {
+    let (input, width) = long(input)?;
+    let (input, height) = long(input)?;
+    Ok((input, Size { width, height }))
+}
+
+pub fn parse_rect(input: &[u8]) -> ParseResult<'_, Rect> {
+    let (input, point) = parse_point(input)?;
+    let (input, size) = parse_size(input)?;
+    Ok((input, Rect { point, size }))
+}
+
 /// Parse a DWORD as size information and make sure the
 /// parsed size no less than 4. The latter is important as
 /// this function is used when parsing frames and chunks
@@ -92,6 +133,10 @@ pub fn parse_dword_as_u8<'a>(input: &'a [u8], e: ParseError<'a>) -> ParseResult<
 
 pub fn parse_string(input: &[u8]) -> ParseResult<'_, &str> {
     map_res(flat_map(word, take), std::str::from_utf8)(input)
+}
+
+pub fn parse_uuid(input: &[u8]) -> ParseResult<'_, Uuid> {
+    le_u128(input)
 }
 
 pub fn fixed(input: &[u8]) -> ParseResult<'_, Fixed> {
