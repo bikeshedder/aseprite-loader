@@ -18,6 +18,7 @@ pub struct TagsChunk<'a> {
 pub struct Tag<'a> {
     pub frames: Range<Word>,
     pub animation_direction: AnimationDirection,
+    pub animation_repeat: Word,
     #[deprecated]
     pub color: [u8; 3],
     pub name: &'a str,
@@ -28,6 +29,7 @@ pub enum AnimationDirection {
     Forward,
     Reverse,
     PingPong,
+    PingPongReverse,
     Unknown(Byte),
 }
 
@@ -54,7 +56,8 @@ pub fn parse_tag(input: &[u8]) -> ParseResult<'_, Tag<'_>> {
     }
     let (input, animation_direction) = byte(input)?;
     let animation_direction = AnimationDirection::from(animation_direction);
-    let (input, _) = take(8usize)(input)?;
+    let (input, animation_repeat) = word(input)?;
+    let (input, _) = take(6usize)(input)?;
     let (input, color) = take(3usize)(input)?;
     let (input, _) = byte(input)?;
     let (input, name) = parse_string(input)?;
@@ -64,6 +67,7 @@ pub fn parse_tag(input: &[u8]) -> ParseResult<'_, Tag<'_>> {
         Tag {
             frames: (from_frame..to_frame + 1),
             animation_direction,
+            animation_repeat,
             color: [color[0], color[1], color[2]],
             name,
         },
