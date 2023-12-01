@@ -20,14 +20,14 @@ pub struct ExternalFile<'a> {
     pub file_name: &'a str,
 }
 
-pub fn parse_external_files_chunk(input: &[u8]) -> ParseResult<ExternalFilesChunk> {
+pub fn parse_external_files_chunk(input: &[u8]) -> ParseResult<'_, ExternalFilesChunk<'_>> {
     let (input, number_of_entries) = parse_dword_as_usize(input)?;
     let (input, _) = take(8usize)(input)?;
     let (input, files) = count(parse_external_file, number_of_entries)(input)?;
     Ok((input, ExternalFilesChunk { files }))
 }
 
-pub fn parse_external_file(input: &[u8]) -> ParseResult<ExternalFile> {
+pub fn parse_external_file(input: &[u8]) -> ParseResult<'_, ExternalFile<'_>> {
     let (input, entry_id) = dword(input)?;
     let (input, file_name) = parse_string(input)?;
     Ok((

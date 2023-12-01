@@ -21,7 +21,7 @@ pub struct RawFrame<'a> {
 }
 
 impl<'a> RawFrame<'a> {
-    pub fn cels(&self) -> impl Iterator<Item = &CelChunk> {
+    pub fn cels(&self) -> impl Iterator<Item = &CelChunk<'_>> {
         self.chunks.iter().filter_map(|chunk| {
             if let Chunk::Cel(cel) = chunk {
                 Some(cel)
@@ -34,11 +34,11 @@ impl<'a> RawFrame<'a> {
 
 const FRAME_MAGIC_NUMBER: [u8; 2] = 0xF1FAu16.to_le_bytes();
 
-pub fn parse_frames(input: &[u8]) -> ParseResult<Vec<RawFrame>> {
+pub fn parse_frames(input: &[u8]) -> ParseResult<'_, Vec<RawFrame<'_>>> {
     complete(all_consuming(many1(parse_rawframe)))(input)
 }
 
-pub fn parse_rawframe(input: &[u8]) -> ParseResult<RawFrame> {
+pub fn parse_rawframe(input: &[u8]) -> ParseResult<'_, RawFrame<'_>> {
     let (input, size) = dword_size(input, ParseError::InvalidFrameSize)?;
     let (rest, input) = take(size - 4)(input)?;
     let (input, _) = tag(FRAME_MAGIC_NUMBER)(input)?;

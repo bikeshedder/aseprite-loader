@@ -12,7 +12,6 @@ pub mod file;
 pub mod frame;
 pub mod header;
 pub mod image;
-pub mod loader;
 pub mod palette;
 pub mod raw_file;
 pub mod raw_frame;

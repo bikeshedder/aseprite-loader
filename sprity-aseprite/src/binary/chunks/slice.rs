@@ -21,7 +21,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct SliceKey {
     pub frame_number: Dword,
     pub x: Long,
@@ -32,7 +32,7 @@ pub struct SliceKey {
     pub pivot: Option<Pivot>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct NinePatch {
     pub x: Long,
     pub y: Long,
@@ -40,13 +40,13 @@ pub struct NinePatch {
     pub height: Dword,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Pivot {
     pub x: Long,
     pub y: Long,
 }
 
-pub fn parse_slice_chunk(input: &[u8]) -> ParseResult<SliceChunk> {
+pub fn parse_slice_chunk(input: &[u8]) -> ParseResult<'_, SliceChunk<'_>> {
     let (input, number_of_keys) = parse_dword_as_usize(input)?;
     let (input, flags) = dword(input)?;
     let flags = SliceFlags::from_bits_truncate(flags);
@@ -63,7 +63,7 @@ pub fn parse_slice_chunk(input: &[u8]) -> ParseResult<SliceChunk> {
     ))
 }
 
-pub fn parse_slice_key(input: &[u8], flags: SliceFlags) -> ParseResult<SliceKey> {
+pub fn parse_slice_key(input: &[u8], flags: SliceFlags) -> ParseResult<'_, SliceKey> {
     let (input, frame_number) = dword(input)?;
     let (input, x) = long(input)?;
     let (input, y) = long(input)?;
@@ -86,7 +86,7 @@ pub fn parse_slice_key(input: &[u8], flags: SliceFlags) -> ParseResult<SliceKey>
     ))
 }
 
-pub fn parse_nine_patch(input: &[u8]) -> ParseResult<NinePatch> {
+pub fn parse_nine_patch(input: &[u8]) -> ParseResult<'_, NinePatch> {
     let (input, x) = long(input)?;
     let (input, y) = long(input)?;
     let (input, width) = dword(input)?;
@@ -102,7 +102,7 @@ pub fn parse_nine_patch(input: &[u8]) -> ParseResult<NinePatch> {
     ))
 }
 
-pub fn parse_pivot(input: &[u8]) -> ParseResult<Pivot> {
+pub fn parse_pivot(input: &[u8]) -> ParseResult<'_, Pivot> {
     let (input, x) = long(input)?;
     let (input, y) = long(input)?;
     Ok((input, Pivot { x, y }))

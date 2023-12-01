@@ -1,14 +1,9 @@
-use std::{
-    collections::HashMap,
-    fs::read_dir,
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
 
 use flate2::Decompress;
 use heck::ToUpperCamelCase;
-use sprity_core::{Frame, ImageLoader, LoadImageError, LoadSpriteError, SpriteLoader};
 
-use super::{
+use crate::binary::{
     chunks::{cel::CelContent, layer::LayerType},
     color_depth::ColorDepth,
     file::{parse_file, File},
@@ -16,45 +11,8 @@ use super::{
     palette::Palette,
 };
 
-static ASEPRITE_EXTENSIONS: &[&str] = &["ase", "aseprite"];
-
-#[derive(Default)]
-pub struct BinaryLoader {}
-
-impl BinaryLoader {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl sprity_core::Loader for BinaryLoader {
-    fn list_dir(
-        &self,
-        dir: &dyn AsRef<Path>,
-    ) -> Result<Vec<(String, PathBuf)>, sprity_core::ListDirError> {
-        Ok(read_dir(dir)?
-            .filter_map(|entry| entry.ok())
-            .filter_map(|entry| {
-                let path = entry.path();
-                let name = path.file_stem()?.to_str()?.to_upper_camel_case();
-                let ext = path.extension()?;
-                if ASEPRITE_EXTENSIONS.contains(&ext.to_str()?.to_lowercase().as_ref()) {
-                    Some((name, path))
-                } else {
-                    None
-                }
-            })
-            .collect())
-    }
-    fn load_sprite<'a>(
-        &self,
-        data: &'a [u8],
-    ) -> Result<Box<dyn SpriteLoader + 'a>, LoadSpriteError> {
-        Ok(Box::new(AsepriteSpriteLoader::load(data)?))
-    }
-}
-
-struct AsepriteSpriteLoader<'a> {
+#[derive(Debug)]
+pub struct AsepriteFile<'a> {
     file: File<'a>,
     tags: Vec<String>,
     layers: Vec<String>,
@@ -64,13 +22,15 @@ struct AsepriteSpriteLoader<'a> {
     images: Vec<Image<'a>>,
 }
 
-struct AsepriteImageLoader<'a> {
-    file: &'a File<'a>,
-    image: &'a Image<'a>,
+#[derive(Debug, Copy, Clone)]
+pub struct Frame {
+    pub duration: u16,
+    pub origin: (i16, i16),
+    pub image_index: usize,
 }
 
-impl AsepriteSpriteLoader<'_> {
-    fn load(data: &[u8]) -> Result<AsepriteSpriteLoader, LoadSpriteError> {
+impl AsepriteFile<'_> {
+    pub fn load(data: &[u8]) -> Result<AsepriteFile<'_>, LoadSpriteError> {
         let file = parse_file(data).map_err(|e| LoadSpriteError::Parse {
             message: e.to_string(),
         })?;
@@ -91,14 +51,14 @@ impl AsepriteSpriteLoader<'_> {
             })
             .collect();
         // Map between (frame_index, layer_index) to an actual image object
-        let mut image_vec: Vec<Image> = Vec::new();
+        let mut image_vec: Vec<Image<'_>> = Vec::new();
         let mut image_map: HashMap<(usize, usize), usize> = HashMap::new();
         for (frame_index, frame) in file.frames.iter().enumerate() {
             for cel in frame.cels.iter().filter_map(|x| x.as_ref()) {
                 if let CelContent::Image(image) = &cel.content {
                     let image_index = image_vec.len();
                     image_vec.push(image.clone());
-                    image_map.insert((frame_index, cel.layer_index.into()), image_index);
+                    let _ = image_map.insert((frame_index, cel.layer_index.into()), image_index);
                 }
             }
         }
@@ -127,7 +87,7 @@ impl AsepriteSpriteLoader<'_> {
                             *image_map.get(&(frame_position.into(), layer_index))
                                 .ok_or_else(|| LoadSpriteError::Parse {
                                     message: format!(
-                                        "Cel(frame={}, layer={}) references anothes linked cel (frame={}, layer={}) and not an image cel.", 
+                                        "Cel(frame={}, layer={}) references anothes linked cel (frame={}, layer={}) and not an image cel.",
                                         frame_index, layer_index, frame_position, layer_index
                                     )
                                 })?
@@ -143,7 +103,7 @@ impl AsepriteSpriteLoader<'_> {
                 frames.push(image_refs);
             }
         }
-        Ok(AsepriteSpriteLoader {
+        Ok(AsepriteFile {
             file,
             tags,
             layers,
@@ -151,56 +111,49 @@ impl AsepriteSpriteLoader<'_> {
             images: image_vec,
         })
     }
-}
-
-impl<'a> SpriteLoader for AsepriteSpriteLoader<'a> {
-    fn size(&self) -> (u16, u16) {
+    /// Get size of the sprite (width, height)
+    pub fn size(&self) -> (u16, u16) {
         (self.file.header.width, self.file.header.height)
     }
-    fn tags(&self) -> &[String] {
+    /// Get tag names
+    pub fn tags(&self) -> &[String] {
         &self.tags
     }
-    fn layers(&self) -> &[String] {
+    /// Get layer names
+    pub fn layers(&self) -> &[String] {
         &self.layers
     }
-    fn frames(&self, tag: usize, layer: usize) -> &[Frame] {
+    /// Get the image indices for a given tag and layer
+    pub fn frames(&self, tag: usize, layer: usize) -> &[Frame] {
         &self.frames[tag * self.layers.len() + layer]
     }
-    fn images(&self) -> usize {
+    /// Get image count
+    pub fn image_count(&self) -> usize {
         self.images.len()
     }
-    fn image_loader(&self, index: usize) -> Box<dyn ImageLoader + '_> {
-        Box::new(AsepriteImageLoader {
-            file: &self.file,
-            image: &self.images[index],
-        })
-    }
-}
 
-impl<'a> ImageLoader for AsepriteImageLoader<'a> {
-    fn size(&self) -> (u16, u16) {
-        (self.image.width, self.image.height)
-    }
-    fn load<'b>(&self, target: &'b mut [u8]) -> Result<&'b [u8], LoadImageError> {
-        let target_size = usize::from(self.image.width * self.image.height * 4);
+    /// Get image loader for a given image index
+    pub fn load_image(&self, index: usize, target: &mut [u8]) -> Result<(), LoadImageError> {
+        let image = &self.images[index];
+        let target_size = usize::from(image.width * image.height * 4);
         if target.len() < target_size {
             return Err(LoadImageError::TargetBufferTooSmall);
         }
         let target = &mut target[..target_size];
-        match (self.file.header.color_depth, self.image.compressed) {
-            (ColorDepth::Rgba, false) => target.copy_from_slice(self.image.data),
-            (ColorDepth::Rgba, true) => decompress(self.image.data, target)?,
+        match (self.file.header.color_depth, image.compressed) {
+            (ColorDepth::Rgba, false) => target.copy_from_slice(image.data),
+            (ColorDepth::Rgba, true) => decompress(image.data, target)?,
             (ColorDepth::Grayscale, false) => {
-                grayscale_to_rgba(self.image.data, target)?;
+                grayscale_to_rgba(image.data, target)?;
             }
             (ColorDepth::Grayscale, true) => {
-                let mut buf = vec![0u8; (self.image.width * self.image.height * 2).into()];
-                decompress(self.image.data, &mut buf)?;
+                let mut buf = vec![0u8; (image.width * image.height * 2).into()];
+                decompress(image.data, &mut buf)?;
                 grayscale_to_rgba(&buf, target)?;
             }
             (ColorDepth::Indexed, false) => {
                 indexed_to_rgba(
-                    self.image.data,
+                    image.data,
                     self.file
                         .palette
                         .as_ref()
@@ -209,8 +162,8 @@ impl<'a> ImageLoader for AsepriteImageLoader<'a> {
                 )?;
             }
             (ColorDepth::Indexed, true) => {
-                let mut buf = vec![0u8; (self.image.width * self.image.height).into()];
-                decompress(self.image.data, &mut buf)?;
+                let mut buf = vec![0u8; (image.width * image.height).into()];
+                decompress(image.data, &mut buf)?;
                 indexed_to_rgba(
                     &buf,
                     self.file
@@ -222,8 +175,37 @@ impl<'a> ImageLoader for AsepriteImageLoader<'a> {
             }
             (ColorDepth::Unknown(_), _) => return Err(LoadImageError::UnsupportedColorDepth),
         }
-        Ok(target)
+        Ok(())
     }
+}
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum LoadSpriteError {
+    #[error("parsing failed {message}")]
+    Parse { message: String },
+    #[error("missing tag: {0}")]
+    MissingTag(String),
+    #[error("missing layer: {0}")]
+    MissingLayer(String),
+    #[error("frame index out of range: {0}")]
+    FrameIndexOutOfRange(usize),
+}
+
+#[allow(missing_copy_implementations)]
+#[derive(Error, Debug)]
+pub enum LoadImageError {
+    #[error("target buffer too small")]
+    TargetBufferTooSmall,
+    #[error("missing palette")]
+    MissingPalette,
+    #[error("unsupported color depth")]
+    UnsupportedColorDepth,
+    #[error("decompression failed")]
+    DecompressError,
+    #[error("invalid image data")]
+    InvalidImageData,
 }
 
 fn decompress(data: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {

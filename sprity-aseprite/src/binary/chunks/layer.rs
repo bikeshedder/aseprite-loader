@@ -50,7 +50,7 @@ impl From<Word> for LayerType {
     }
 }
 
-pub fn parse_layer_chunk(input: &[u8]) -> ParseResult<LayerChunk> {
+pub fn parse_layer_chunk(input: &[u8]) -> ParseResult<'_, LayerChunk<'_>> {
     let (input, flags) = word(input)?;
     let flags = LayerFlags::from_bits_truncate(flags);
     let (input, layer_type) = word(input)?;

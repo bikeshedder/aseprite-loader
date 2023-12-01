@@ -16,7 +16,7 @@ pub struct ColorProfileChunk<'a> {
     pub profile: ColorProfile<'a>,
 }
 
-#[derive(FromRepr)]
+#[derive(Debug, Copy, Clone, FromRepr)]
 pub enum ColorProfileType {
     NoColorProfile,
     Srgb,
@@ -38,7 +38,7 @@ pub enum ColorProfile<'a> {
     Unknown(Word),
 }
 
-pub fn parse_color_profile(input: &[u8]) -> ParseResult<ColorProfileChunk> {
+pub fn parse_color_profile(input: &[u8]) -> ParseResult<'_, ColorProfileChunk<'_>> {
     let (input, profile_type) = word(input)?;
     let profile_type = ColorProfileType::from_repr(profile_type.into())
         .unwrap_or(ColorProfileType::Unknown(profile_type));

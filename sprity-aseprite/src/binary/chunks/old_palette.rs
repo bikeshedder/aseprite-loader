@@ -24,13 +24,13 @@ pub struct Packet {
     pub colors: Vec<RGB>,
 }
 
-pub fn parse_old_palette_chunk(input: &[u8]) -> ParseResult<OldPaletteChunk> {
+pub fn parse_old_palette_chunk(input: &[u8]) -> ParseResult<'_, OldPaletteChunk> {
     let (input, number_of_packets) = word(input)?;
     let (input, packets) = count(parse_packet, number_of_packets.into())(input)?;
     Ok((input, OldPaletteChunk { packets }))
 }
 
-pub fn parse_packet(input: &[u8]) -> ParseResult<Packet> {
+pub fn parse_packet(input: &[u8]) -> ParseResult<'_, Packet> {
     let (input, entries_to_skip) = byte(input)?;
     let (input, number_of_colors) = byte(input)?;
     let number_of_colors = if number_of_colors == 0 {

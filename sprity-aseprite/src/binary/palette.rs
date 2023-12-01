@@ -1,12 +1,11 @@
 use thiserror::Error;
 
-pub use sprity_core::Color;
-
 use super::{
     chunk::Chunk,
     chunks::{old_palette::OldPaletteChunk, palette::PaletteChunk},
     header::Header,
     raw_frame::RawFrame,
+    scalars::Color,
 };
 
 #[derive(Debug)]
@@ -22,7 +21,7 @@ impl Default for Palette {
     }
 }
 
-pub fn create_palette(header: &Header, frames: &[RawFrame]) -> Result<Palette, PaletteError> {
+pub fn create_palette(header: &Header, frames: &[RawFrame<'_>]) -> Result<Palette, PaletteError> {
     let mut palette = Palette::default();
     let palette_chunks: Vec<_> = frames
         .iter()
@@ -77,7 +76,7 @@ pub fn create_palette(header: &Header, frames: &[RawFrame]) -> Result<Palette, P
 
 fn process_palette_chunks(
     transparent_index: u8,
-    chunks: &[&PaletteChunk],
+    chunks: &[&PaletteChunk<'_>],
     palette: &mut Palette,
 ) -> Result<(), PaletteError> {
     let mut ok = false;
@@ -131,7 +130,7 @@ fn process_old_palette_chunks(
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Copy, Clone, Error)]
 pub enum PaletteError {
     #[error("Palette is missing")]
     Missing,

@@ -35,7 +35,7 @@ impl From<Word> for BlendMode {
     }
 }
 
-pub fn parse_blend_mode(input: &[u8]) -> ParseResult<BlendMode> {
+pub fn parse_blend_mode(input: &[u8]) -> ParseResult<'_, BlendMode> {
     let (input, blend_mode) = word(input)?;
     Ok((input, blend_mode.into()))
 }

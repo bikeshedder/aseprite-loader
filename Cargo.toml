@@ -10,16 +10,12 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/bikeshedder/sprity"
 readme = "README.md"
 
+[features]
+default = ['aseprite']
+aseprite = ['sprity-aseprite']
+
 [dependencies]
-sprity-aseprite = { path = "./sprity-aseprite" }
-sprity-core = { path = "./sprity-core" }
+sprity-aseprite = { path = "./sprity-aseprite", optional = true }
 
 [workspace]
-members = [
-    "sprity-aseprite",
-    "sprity-aseprite-macros",
-    "sprity-bevy",
-    "sprity-codegen",
-    "sprity-cli",
-    "sprity-core",
-]
+members = ["sprity-*"]

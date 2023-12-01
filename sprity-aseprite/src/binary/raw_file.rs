@@ -10,7 +10,7 @@ pub struct RawFile<'a> {
     pub frames: Vec<RawFrame<'a>>,
 }
 
-pub fn parse_raw_file(input: &[u8]) -> Result<RawFile, nom::Err<ParseError>> {
+pub fn parse_raw_file(input: &[u8]) -> Result<RawFile<'_>, nom::Err<ParseError<'_>>> {
     let (input, header) = parse_header(input)?;
     let (_, frames) = parse_frames(input)?;
     Ok(RawFile { header, frames })

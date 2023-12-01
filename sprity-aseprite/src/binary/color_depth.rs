@@ -46,7 +46,7 @@ impl From<Word> for ColorDepth {
     }
 }
 
-pub fn parse_color_depth(input: &[u8]) -> ParseResult<ColorDepth> {
+pub fn parse_color_depth(input: &[u8]) -> ParseResult<'_, ColorDepth> {
     let (input, bpp) = word(input)?;
     Ok((input, bpp.into()))
 }

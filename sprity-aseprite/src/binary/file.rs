@@ -21,7 +21,7 @@ pub struct File<'a> {
     pub tags: Vec<Tag<'a>>,
 }
 
-pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
+pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
     let raw_file = parse_raw_file(input)?;
     let palette = match raw_file.header.color_depth {
         ColorDepth::Indexed => Some(
@@ -30,11 +30,11 @@ pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
         ),
         _ => None,
     };
-    let mut frames = Vec::<(Word, Vec<CelChunk>)>::new();
-    let mut layers = Vec::<LayerChunk>::new();
-    let mut tags = Vec::<Tag>::new();
+    let mut frames = Vec::<(Word, Vec<CelChunk<'_>>)>::new();
+    let mut layers = Vec::<LayerChunk<'_>>::new();
+    let mut tags = Vec::<Tag<'_>>::new();
     for raw_frame in raw_file.frames {
-        let mut cels = Vec::<CelChunk>::new();
+        let mut cels = Vec::<CelChunk<'_>>::new();
         for chunk in raw_frame.chunks {
             match chunk {
                 Chunk::Palette0004(_) => {}
@@ -64,7 +64,7 @@ pub fn parse_file(input: &[u8]) -> Result<File, nom::Err<ParseError>> {
                 cels: {
                     // Insert cels in the cels vector so that a direct lookup
                     // by layer index is possible.
-                    let mut cels: Vec<Option<CelChunk>> = Vec::with_capacity(layers.len());
+                    let mut cels: Vec<Option<CelChunk<'_>>> = Vec::with_capacity(layers.len());
                     for _ in 0..layers.len() {
                         cels.push(None);
                     }
@@ -99,7 +99,7 @@ fn test_parse_file() {
 
 #[test]
 fn test_palette() {
-    use sprity_core::Color;
+    use crate::binary::scalars::Color;
     let input = std::fs::read("./tests/indexed.aseprite").unwrap();
     let file = parse_file(&input).unwrap();
     assert_eq!(file.header.color_depth, ColorDepth::Indexed);

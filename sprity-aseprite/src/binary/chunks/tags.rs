@@ -23,7 +23,7 @@ pub struct Tag<'a> {
     pub name: &'a str,
 }
 
-#[derive(FromRepr, Debug)]
+#[derive(FromRepr, Debug, Copy, Clone)]
 pub enum AnimationDirection {
     Forward,
     Reverse,
@@ -37,14 +37,14 @@ impl From<Byte> for AnimationDirection {
     }
 }
 
-pub fn parse_tags_chunk(input: &[u8]) -> ParseResult<TagsChunk> {
+pub fn parse_tags_chunk(input: &[u8]) -> ParseResult<'_, TagsChunk<'_>> {
     let (input, number_of_tags) = word(input)?;
     let (input, _) = take(8usize)(input)?;
     let (input, tags) = count(parse_tag, number_of_tags.into())(input)?;
     Ok((input, TagsChunk { tags }))
 }
 
-pub fn parse_tag(input: &[u8]) -> ParseResult<Tag> {
+pub fn parse_tag(input: &[u8]) -> ParseResult<'_, Tag<'_>> {
     let (input, from_frame) = word(input)?;
     let (input, to_frame) = word(input)?;
     if from_frame > to_frame {

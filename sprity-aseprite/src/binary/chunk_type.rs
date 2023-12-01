@@ -3,7 +3,7 @@ use strum_macros::FromRepr;
 
 use super::{errors::ParseResult, scalars::word};
 
-#[derive(Debug, FromRepr)]
+#[derive(FromRepr, Debug, Copy, Clone)]
 pub enum ChunkType {
     Palette0004 = 0x0004,
     Palette0011 = 0x0011,
@@ -21,6 +21,6 @@ pub enum ChunkType {
     Tileset = 0x2023,
 }
 
-pub fn parse_chunk_type(input: &[u8]) -> ParseResult<Result<ChunkType, u16>> {
+pub fn parse_chunk_type(input: &[u8]) -> ParseResult<'_, Result<ChunkType, u16>> {
     map(word, |n| ChunkType::from_repr(n.into()).ok_or(n))(input)
 }

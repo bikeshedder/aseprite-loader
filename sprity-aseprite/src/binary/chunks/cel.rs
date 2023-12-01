@@ -70,7 +70,7 @@ pub enum CelContent<'a> {
     Unknown(&'a [u8]),
 }
 
-pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<CelChunk<'_>> {
+pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
     let (input, layer_index) = word(input)?;
     let (input, x) = short(input)?;
     let (input, y) = short(input)?;

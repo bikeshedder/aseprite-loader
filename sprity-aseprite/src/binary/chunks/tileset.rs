@@ -36,7 +36,7 @@ pub struct TilesetChunk<'a> {
     pub tiles: Option<TilesetTiles<'a>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct TilesetExternalFile {
     /// ID of the external file. This ID is one entry
     /// of the the External Files Chunk.
@@ -62,7 +62,7 @@ bitflags! {
     }
 }
 
-pub fn parse_tileset_chunk(input: &[u8]) -> ParseResult<TilesetChunk> {
+pub fn parse_tileset_chunk(input: &[u8]) -> ParseResult<'_, TilesetChunk<'_>> {
     let (input, id) = dword(input)?;
     let (input, flags) = dword(input)?;
     let flags = TilesetFlags::from_bits_truncate(flags);
@@ -93,7 +93,7 @@ pub fn parse_tileset_chunk(input: &[u8]) -> ParseResult<TilesetChunk> {
     ))
 }
 
-pub fn parse_external_file(input: &[u8]) -> ParseResult<TilesetExternalFile> {
+pub fn parse_external_file(input: &[u8]) -> ParseResult<'_, TilesetExternalFile> {
     let (input, external_file_id) = dword(input)?;
     let (input, tileset_id) = dword(input)?;
     Ok((
@@ -107,6 +107,6 @@ pub fn parse_external_file(input: &[u8]) -> ParseResult<TilesetExternalFile> {
 
 use nom::combinator::map;
 
-pub fn parse_tiles(input: &[u8]) -> ParseResult<TilesetTiles> {
+pub fn parse_tiles(input: &[u8]) -> ParseResult<'_, TilesetTiles<'_>> {
     map(flat_map(dword, take), |data| TilesetTiles { data })(input)
 }

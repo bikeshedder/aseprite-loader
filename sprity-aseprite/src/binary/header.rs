@@ -9,7 +9,7 @@ use super::{
 const HEADER_MAGIC_NUMBER: [u8; 2] = 0xA5E0u16.to_le_bytes();
 
 /// A 128-byte header (same as FLC/FLI header, but with other magic number)
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Header {
     /// File size
     pub file_size: Dword,
@@ -50,7 +50,7 @@ pub struct Header {
     pub grid_height: Word,
 }
 
-pub fn parse_header(input: &[u8]) -> ParseResult<Header> {
+pub fn parse_header(input: &[u8]) -> ParseResult<'_, Header> {
     let (rest, input) = take(128usize)(input)?;
     let (input, file_size) = dword(input)?;
     let (input, _) = tag(HEADER_MAGIC_NUMBER)(input)?;

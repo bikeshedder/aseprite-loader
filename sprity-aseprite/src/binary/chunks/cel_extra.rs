@@ -22,7 +22,7 @@ bitflags! {
     }
 }
 
-pub fn parse_cel_extra_chunk(input: &[u8]) -> ParseResult<CelExtraChunk> {
+pub fn parse_cel_extra_chunk(input: &[u8]) -> ParseResult<'_, CelExtraChunk<'_>> {
     let (input, flags) = dword(input)?;
     let (input, precise_x_position) = fixed(input)?;
     let (input, precise_y_position) = fixed(input)?;

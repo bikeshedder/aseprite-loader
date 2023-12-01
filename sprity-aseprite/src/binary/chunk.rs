@@ -39,11 +39,11 @@ pub enum Chunk<'a> {
     Unsupported(u16),
 }
 
-pub fn parse_chunks(input: &[u8], chunk_count: usize) -> ParseResult<Vec<Chunk>> {
+pub fn parse_chunks(input: &[u8], chunk_count: usize) -> ParseResult<'_, Vec<Chunk<'_>>> {
     count(parse_chunk, chunk_count)(input)
 }
 
-pub fn parse_chunk(input: &[u8]) -> ParseResult<Chunk<'_>> {
+pub fn parse_chunk(input: &[u8]) -> ParseResult<'_, Chunk<'_>> {
     let (input, size) = dword_size(input, ParseError::InvalidFrameSize)?;
     let (rest, input) = take(size - 4)(input)?;
     let (chunk_data, chunk_type) = parse_chunk_type(input)?;

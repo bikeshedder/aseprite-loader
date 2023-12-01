@@ -19,7 +19,7 @@ pub struct UserDataChunk<'a> {
     pub color: Option<Color>,
 }
 
-pub fn parse_user_data_chunk(input: &[u8]) -> ParseResult<UserDataChunk> {
+pub fn parse_user_data_chunk(input: &[u8]) -> ParseResult<'_, UserDataChunk<'_>> {
     let (input, flags) = dword(input)?;
     let flags = UserDataFlags::from_bits_truncate(flags);
     let (input, text) = cond(flags.contains(UserDataFlags::HAS_TEXT), parse_string)(input)?;

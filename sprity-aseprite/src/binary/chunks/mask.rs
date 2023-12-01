@@ -28,7 +28,7 @@ pub struct MaskChunk<'a> {
     pub data: &'a [u8],
 }
 
-pub fn parse_mask_chunk(input: &[u8]) -> ParseResult<MaskChunk<'_>> {
+pub fn parse_mask_chunk(input: &[u8]) -> ParseResult<'_, MaskChunk<'_>> {
     let (input, x) = short(input)?;
     let (input, y) = short(input)?;
     let (input, width) = word(input)?;

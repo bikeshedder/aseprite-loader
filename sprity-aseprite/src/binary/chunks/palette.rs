@@ -29,7 +29,7 @@ bitflags! {
     }
 }
 
-pub fn parse_palette_chunk(input: &[u8]) -> ParseResult<PaletteChunk<'_>> {
+pub fn parse_palette_chunk(input: &[u8]) -> ParseResult<'_, PaletteChunk<'_>> {
     let (input, palette_size) = parse_dword_as_usize(input)?;
     let (input, first_color_index) = parse_dword_as_u8(
         input,
@@ -55,7 +55,7 @@ pub fn parse_palette_chunk(input: &[u8]) -> ParseResult<PaletteChunk<'_>> {
     ))
 }
 
-pub fn parse_palette_entry(input: &[u8]) -> ParseResult<PaletteEntry<'_>> {
+pub fn parse_palette_entry(input: &[u8]) -> ParseResult<'_, PaletteEntry<'_>> {
     let (input, flags) = word(input)?;
     let flags = PaletteEntryFlags::from_bits_truncate(flags);
     let (input, color) = parse_color(input)?;
