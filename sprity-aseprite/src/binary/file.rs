@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use super::{
     chunk::Chunk,
-    chunks::{cel::CelChunk, layer::LayerChunk, tags::Tag},
+    chunks::{cel::CelChunk, layer::LayerChunk, slice::SliceChunk, tags::Tag},
     color_depth::ColorDepth,
     errors::ParseError,
     frame::Frame,
@@ -19,6 +19,7 @@ pub struct File<'a> {
     pub layers: Vec<LayerChunk<'a>>,
     pub frames: Vec<Frame<'a>>,
     pub tags: Vec<Tag<'a>>,
+    pub slices: Vec<SliceChunk<'a>>,
 }
 
 pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
@@ -33,6 +34,7 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
     let mut frames = Vec::<(Word, Vec<CelChunk<'_>>)>::new();
     let mut layers = Vec::<LayerChunk<'_>>::new();
     let mut tags = Vec::<Tag<'_>>::new();
+    let mut slices = Vec::<SliceChunk<'_>>::new();
     for raw_frame in raw_file.frames {
         let mut cels = Vec::<CelChunk<'_>>::new();
         for chunk in raw_frame.chunks {
@@ -49,7 +51,7 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
                 Chunk::Tags(tags_chunk) => tags.extend(tags_chunk.tags),
                 Chunk::Palette(_) => {}
                 Chunk::UserData(_) => {}
-                Chunk::Slice(_) => {}
+                Chunk::Slice(slice) => slices.push(slice),
                 Chunk::Tileset(_) => {}
                 Chunk::Unsupported(_) => {}
             }
@@ -86,6 +88,7 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
         layers,
         frames,
         tags,
+        slices,
     })
 }
 
