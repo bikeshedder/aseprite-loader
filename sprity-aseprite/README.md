@@ -3,7 +3,7 @@
 This crate implements a zero-copy parser for aseprite files according to the
 Aspeprite File Format (.ase/.aseprite) Specifications:
 
-https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
+<https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md>
 
 ## License
 
