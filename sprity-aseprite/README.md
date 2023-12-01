@@ -1,7 +1,7 @@
 # Sprity Aseprite [![Latest Version](https://img.shields.io/crates/v/sprity-aseprite.svg)](https://crates.io/crates/sprity-aseprite)
 
 This crate implements a zero-copy parser for aseprite files according to the
-Aspeprite File Format (.ase/.aseprite) Specifications:
+Aseprite File Format (.ase/.aseprite) Specifications:
 
 <https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md>
 
