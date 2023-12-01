@@ -45,6 +45,7 @@ pub fn parse_chunks(input: &[u8], chunk_count: usize) -> ParseResult<'_, Vec<Chu
 
 pub fn parse_chunk(input: &[u8]) -> ParseResult<'_, Chunk<'_>> {
     let (input, size) = dword_size(input, ParseError::InvalidFrameSize)?;
+    // FIXME handle underflows
     let (rest, input) = take(size - 4)(input)?;
     let (chunk_data, chunk_type) = parse_chunk_type(input)?;
     let chunk = match chunk_type {

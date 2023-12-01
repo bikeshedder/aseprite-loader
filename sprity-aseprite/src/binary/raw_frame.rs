@@ -40,6 +40,7 @@ pub fn parse_frames(input: &[u8]) -> ParseResult<'_, Vec<RawFrame<'_>>> {
 
 pub fn parse_rawframe(input: &[u8]) -> ParseResult<'_, RawFrame<'_>> {
     let (input, size) = dword_size(input, ParseError::InvalidFrameSize)?;
+    // FIXME handle underflows
     let (rest, input) = take(size - 4)(input)?;
     let (input, _) = tag(FRAME_MAGIC_NUMBER)(input)?;
     let (input, chunk_count) = word(input)?;
