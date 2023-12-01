@@ -2,6 +2,13 @@
 name = "sprity-aseprite"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
+authors = ["Michael P. Jung <michael.jung@terreon.de>"]
+description = "Aseprite file loader"
+keywords = ["sprite", "aseprite", "binary", "loader"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/bikeshedder/sprity"
+readme = "README.md"
 
 [dependencies]
 bitflags = "2"
