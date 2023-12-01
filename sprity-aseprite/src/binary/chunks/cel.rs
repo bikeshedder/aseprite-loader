@@ -17,6 +17,8 @@ pub struct CelChunk<'a> {
     pub y: Short,
     /// Opacity level
     pub opacity: Byte,
+    /// Z-Index
+    pub z_index: Short,
     /// Cel Data
     pub content: CelContent<'a>,
 }
@@ -77,7 +79,8 @@ pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
     let (input, opacity) = byte(input)?;
     let (input, cel_type) = word(input)?;
     let cel_type = CelType::from(cel_type);
-    let (input, _) = take(7usize)(input)?;
+    let (input, z_index) = short(input)?;
+    let (input, _) = take(5usize)(input)?;
     let content = match cel_type {
         CelType::RawImageData => {
             let (input, width) = word(input)?;
@@ -132,6 +135,7 @@ pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
             x,
             y,
             opacity,
+            z_index,
             content,
         },
     ))
