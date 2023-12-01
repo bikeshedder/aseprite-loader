@@ -63,8 +63,8 @@ pub enum CelContent<'a> {
         bitmask_x_flip: Dword,
         /// Bitmask for Y-Flip
         bitmask_y_flip: Dword,
-        /// Bitmask for 90CW rotation,
-        bitmask_90cw_rotation: Dword,
+        /// Bitmask for diagonal flip (swap X/Y axis)
+        bitmask_diagonal_flip: Dword,
         /// Row by row, from top to bottom tile by tile
         /// compressed with ZLIB method (see NOTE.3)
         data: &'a [u8],
@@ -113,7 +113,7 @@ pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
             let (input, bitmask_tile_id) = dword(input)?;
             let (input, bitmask_y_flip) = dword(input)?;
             let (input, bitmask_x_flip) = dword(input)?;
-            let (input, bitmask_90cw_rotation) = dword(input)?;
+            let (input, bitmask_diagonal_flip) = dword(input)?;
             let (input, _) = take(10usize)(input)?;
             CelContent::CompressedTilemap {
                 width,
@@ -122,7 +122,7 @@ pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
                 bitmask_tile_id,
                 bitmask_x_flip,
                 bitmask_y_flip,
-                bitmask_90cw_rotation,
+                bitmask_diagonal_flip,
                 data: input,
             }
         }

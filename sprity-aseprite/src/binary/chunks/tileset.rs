@@ -57,8 +57,21 @@ bitflags! {
     pub struct TilesetFlags: Dword {
         /// 1 - Include link to external file
         const EXTERNAL_FILE = 1;
+        /// 2 - Include tiles inside this file
         const TILES = 2;
+        /// 4 - Tilemaps using this tileset use tile ID=0 as empty tile
+        /// (this is the new format). In rare cases this bit is off,
+        /// and the empty tile will be equal to 0xffffffff (used in
+        /// internal versions of Aseprite)
         const TILE_0_EMPTY = 4;
+        /// 8 - Aseprite will try to match modified tiles with their X
+        /// flipped version automatically in Auto mode when using
+        /// this tileset.
+        const XFLIP = 8;
+        /// 16 - Same for Y flips
+        const YFLIP = 16;
+        /// 32 - Same for D(iagonal) flips
+        const DFLIP = 32;
     }
 }
 
