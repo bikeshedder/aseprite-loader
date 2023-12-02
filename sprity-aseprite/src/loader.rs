@@ -130,7 +130,11 @@ impl AsepriteFile<'_> {
     pub fn image_count(&self) -> usize {
         self.images.len()
     }
-
+    /// Get image size
+    pub fn image_size(&self, index: usize) -> (u16, u16) {
+        let image = &self.images[index];
+        (image.width, image.height)
+    }
     /// Get image loader for a given image index
     pub fn load_image(&self, index: usize, target: &mut [u8]) -> Result<(), LoadImageError> {
         let image = &self.images[index];
