@@ -4,7 +4,7 @@ use flate2::Decompress;
 use heck::ToUpperCamelCase;
 
 use crate::binary::{
-    chunks::{cel::CelContent, layer::LayerType},
+    chunks::{cel::CelContent, layer::LayerType, slice::SliceChunk},
     color_depth::ColorDepth,
     file::{parse_file, File},
     image::Image,
@@ -16,8 +16,8 @@ pub struct AsepriteFile<'a> {
     file: File<'a>,
     tags: Vec<String>,
     layers: Vec<String>,
-    // This vector maps (tag_index * layer_index + layer_index) to a
-    // list of durations, origins and image indices.
+    /// This vector maps (tag_index * layer_index + layer_index) to a
+    /// list of durations, origins and image indices.
     frames: Vec<Vec<Frame>>,
     images: Vec<Image<'a>>,
 }
@@ -179,6 +179,9 @@ impl AsepriteFile<'_> {
             (ColorDepth::Unknown(_), _) => return Err(LoadImageError::UnsupportedColorDepth),
         }
         Ok(())
+    }
+    pub fn slices(&self) -> &[SliceChunk<'_>] {
+        &self.file.slices
     }
 }
 
