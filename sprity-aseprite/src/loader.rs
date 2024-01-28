@@ -5,7 +5,7 @@ use heck::ToUpperCamelCase;
 
 use crate::binary::{
     blend_mode::BlendMode,
-    chunks::{cel::CelContent, layer::LayerType},
+    chunks::{cel::CelContent, layer::LayerType, slice::SliceChunk},
     color_depth::ColorDepth,
     file::{parse_file, File},
     image::Image,
