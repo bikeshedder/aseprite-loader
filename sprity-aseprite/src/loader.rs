@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 use flate2::Decompress;
 use heck::ToUpperCamelCase;
 
 use crate::binary::{
-    chunks::{cel::CelContent, layer::LayerType, slice::SliceChunk},
+    blend_mode::BlendMode,
+    chunks::{cel::CelContent, layer::LayerType},
     color_depth::ColorDepth,
     file::{parse_file, File},
     image::Image,
@@ -14,45 +15,76 @@ use crate::binary::{
 #[derive(Debug)]
 pub struct AsepriteFile<'a> {
     file: File<'a>,
-    tags: Vec<String>,
-    layers: Vec<String>,
-    /// This vector maps (tag_index * layer_index + layer_index) to a
-    /// list of durations, origins and image indices.
-    frames: Vec<Vec<Frame>>,
+    /// All layers in the file in order
+    layers: Vec<Layer>,
+    /// All frames in the file in order
+    frames: Vec<Frame>,
+    /// All tags in the file
+    tags: Vec<Tag>,
+    /// All images in the file
     images: Vec<Image<'a>>,
 }
 
+/// A cell in a frame
+/// This is a reference to an image cell
 #[derive(Debug, Copy, Clone)]
-pub struct Frame {
-    pub duration: u16,
+pub struct FrameCell {
     pub origin: (i16, i16),
+    pub size: (u16, u16),
+    pub layer_index: usize,
     pub image_index: usize,
 }
 
+/// A frame in the file
+/// This is a collection of cells for each layer
+#[derive(Debug, Clone)]
+pub struct Frame {
+    pub duration: u16,
+    pub origin: (i16, i16),
+    pub cells: Vec<FrameCell>,
+}
+
+/// A tag in the file
+/// This is a range of frames over the frames in the file, ordered by frame index
+#[derive(Debug, Clone)]
+pub struct Tag {
+    pub name: String,
+    pub range: Range<u16>,
+}
+
+/// A layer in the file
+#[derive(Debug, Clone)]
+pub struct Layer {
+    pub name: String,
+    pub opacity: u8,
+    pub blend_mode: BlendMode,
+}
+
 impl AsepriteFile<'_> {
+    /// Load a aseprite file from a byte slice
     pub fn load(data: &[u8]) -> Result<AsepriteFile<'_>, LoadSpriteError> {
         let file = parse_file(data).map_err(|e| LoadSpriteError::Parse {
             message: e.to_string(),
         })?;
-        let tags: Vec<_> = file
-            .tags
-            .iter()
-            .map(|tag| tag.name.to_upper_camel_case())
-            .collect();
         let layers: Vec<_> = file
             .layers
             .iter()
             .filter_map(|layer| {
                 if layer.layer_type == LayerType::Normal {
-                    Some(layer.name.to_upper_camel_case())
+                    Some(Layer {
+                        name: layer.name.to_string(),
+                        opacity: layer.opacity,
+                        blend_mode: layer.blend_mode,
+                    })
                 } else {
                     None
                 }
             })
             .collect();
-        // Map between (frame_index, layer_index) to an actual image object
+
         let mut image_vec: Vec<Image<'_>> = Vec::new();
         let mut image_map: HashMap<(usize, usize), usize> = HashMap::new();
+
         for (frame_index, frame) in file.frames.iter().enumerate() {
             for cel in frame.cels.iter().filter_map(|x| x.as_ref()) {
                 if let CelContent::Image(image) = &cel.content {
@@ -62,46 +94,53 @@ impl AsepriteFile<'_> {
                 }
             }
         }
-        let mut frames: Vec<Vec<Frame>> = Vec::with_capacity(file.tags.len() * file.layers.len());
+
+        let mut frames: Vec<Frame> = Vec::new();
+        let mut tags: Vec<Tag> = Vec::new();
+
         for tag in file.tags.iter() {
-            for layer_index in 0..layers.len() {
-                let mut image_refs: Vec<Frame> = Vec::new();
-                for frame_index in tag.frames.clone() {
-                    let frame_index = usize::from(frame_index);
-                    let frame = file
-                        .frames
-                        .get(frame_index)
-                        .ok_or(LoadSpriteError::FrameIndexOutOfRange(frame_index))?;
-                    let cel = frame.cels[layer_index]
-                        .as_ref()
-                        .ok_or(LoadSpriteError::Parse {
-                            message: format!(
-                                "Tag {:?} references non existant cel (frame={}, layer={})",
-                                tag.name, frame_index, layer_index
-                            ),
-                        })?;
-                    let image_index = match cel.content {
-                        CelContent::Image(_) => image_map[&(frame_index, layer_index)],
-                        CelContent::LinkedCel { frame_position } => {
-                            *image_map.get(&(frame_position.into(), layer_index))
-                                .ok_or_else(|| LoadSpriteError::Parse {
-                                    message: format!(
-                                        "Cel(frame={}, layer={}) references anothes linked cel (frame={}, layer={}) and not an image cel.",
-                                        frame_index, layer_index, frame_position, layer_index
-                                    )
-                                })?
-                        }
-                        _ => return Err(LoadSpriteError::Parse { message: format!("Cel(frame={}, layer={}) referenced by tag {:?} is neither a image cel nor a linked cel", frame_index, layer_index, tag.name)})
-                    };
-                    image_refs.push(Frame {
-                        duration: frame.duration,
-                        origin: (cel.x, cel.y),
-                        image_index,
-                    });
-                }
-                frames.push(image_refs);
-            }
+            tags.push(Tag {
+                name: tag.name.to_upper_camel_case(),
+                range: tag.frames.clone(),
+            });
         }
+
+        for (index, frame) in file.frames.iter().enumerate() {
+            let mut cells: Vec<FrameCell> = Vec::new();
+            for cel in frame.cels.iter().filter_map(|x| x.as_ref()) {
+                let image_index = match cel.content {
+                    CelContent::Image(_) => image_map[&(index, cel.layer_index.into())],
+                    CelContent::LinkedCel { frame_position } => *image_map
+                        .get(&(frame_position.into(), cel.layer_index.into()))
+                        .ok_or_else(|| LoadSpriteError::Parse {
+                            message: format!(
+                                "invalid linked cell at frame {} layer {}",
+                                index, cel.layer_index
+                            ),
+                        })?,
+                    _ => {
+                        return Err(LoadSpriteError::Parse {
+                            message: "invalid cell".to_owned(),
+                        })
+                    }
+                };
+                let width = image_vec[image_index].width;
+                let height = image_vec[image_index].height;
+                cells.push(FrameCell {
+                    origin: (cel.x, cel.y),
+                    size: (width, height),
+                    layer_index: cel.layer_index.into(),
+                    image_index,
+                });
+            }
+
+            frames.push(Frame {
+                duration: frame.duration,
+                origin: (0, 0),
+                cells,
+            });
+        }
+
         Ok(AsepriteFile {
             file,
             tags,
@@ -115,26 +154,85 @@ impl AsepriteFile<'_> {
         (self.file.header.width, self.file.header.height)
     }
     /// Get tag names
-    pub fn tags(&self) -> &[String] {
+    pub fn tags(&self) -> &[Tag] {
         &self.tags
     }
     /// Get layer names
-    pub fn layers(&self) -> &[String] {
+    pub fn layers(&self) -> &[Layer] {
         &self.layers
     }
     /// Get the image indices for a given tag and layer
-    pub fn frames(&self, tag: usize, layer: usize) -> &[Frame] {
-        &self.frames[tag * self.layers.len() + layer]
+    pub fn frames(&self) -> &[Frame] {
+        &self.frames
     }
     /// Get image count
     pub fn image_count(&self) -> usize {
         self.images.len()
     }
-    /// Get image size
-    pub fn image_size(&self, index: usize) -> (u16, u16) {
-        let image = &self.images[index];
-        (image.width, image.height)
+
+    /// Get image loader for a given frame index
+    /// This will combine all layers into a single image
+    /// returns a hash describing the image, since cells can be reused in multiple frames
+    pub fn combined_frame_image(
+        &self,
+        frame_index: usize,
+        target: &mut [u8],
+    ) -> Result<u64, LoadImageError> {
+        let mut hash = 0u64;
+
+        let target_size =
+            usize::from(usize::from(self.file.header.width) * usize::from(self.file.header.height))
+                * 4;
+
+        if target.len() < target_size {
+            return Err(LoadImageError::TargetBufferTooSmall);
+        }
+
+        let frame = &self.frames[frame_index];
+
+        for cell in frame.cells.iter() {
+            let mut cell_target = vec![0; usize::from(cell.size.0 * cell.size.1) * 4];
+            self.load_image(cell.image_index, &mut cell_target).unwrap();
+            let layer = &self.layers[cell.layer_index];
+
+            hash += cell.image_index as u64;
+            hash += cell.layer_index as u64 * 100;
+            hash += cell.origin.0 as u64 * 10000;
+            hash += cell.origin.1 as u64 * 1000000;
+            hash += cell.size.0 as u64 * 100000000;
+            hash += cell.size.1 as u64 * 10000000000;
+
+            for y in 0..cell.size.1 {
+                for x in 0..cell.size.0 {
+                    let origin_x = x + cell.origin.0 as u16;
+                    let origin_y = y + cell.origin.1 as u16;
+
+                    let target_index = (origin_y * self.file.header.width + origin_x) as usize;
+                    let cell_index = (y * cell.size.0 + x) as usize;
+
+                    let target_pixel: &mut [u8] =
+                        &mut target[target_index * 4..target_index * 4 + 4];
+
+                    let cell_pixel: &[u8] = &cell_target[cell_index * 4..cell_index * 4 + 4];
+                    let cell_alpha = cell_target[cell_index * 4 + 3];
+
+                    let total_alpha = ((cell_alpha as u16 * layer.opacity as u16) / 255) as u8;
+
+                    for i in 0..4 {
+                        target_pixel[i] = blend_channel(
+                            target_pixel[i],
+                            cell_pixel[i],
+                            total_alpha,
+                            layer.blend_mode,
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(hash)
     }
+
     /// Get image loader for a given image index
     pub fn load_image(&self, index: usize, target: &mut [u8]) -> Result<(), LoadImageError> {
         let image = &self.images[index];
@@ -252,4 +350,33 @@ fn indexed_to_rgba(
         target[i * 4 + 3] = color.alpha;
     }
     Ok(())
+}
+
+fn blend_channel(first: u8, second: u8, alpha: u8, blend_mode: BlendMode) -> u8 {
+    let alpha = alpha as f32 / 255.0;
+    let first = first as f32 / 255.0;
+    let second = second as f32 / 255.0;
+
+    let result = match blend_mode {
+        BlendMode::Normal => second,
+        BlendMode::Multiply => first * second,
+        BlendMode::Screen => 1.0 - (1.0 - first) * (1.0 - second),
+        BlendMode::Darken => first.min(second),
+        BlendMode::Lighten => first.max(second),
+        BlendMode::Addition => (first + second).min(1.0),
+        BlendMode::Subtract => (first - second).max(0.0),
+        BlendMode::Difference => (first - second).abs(),
+        BlendMode::Overlay => {
+            if first < 0.5 {
+                2.0 * first * second
+            } else {
+                1.0 - 2.0 * (1.0 - first) * (1.0 - second)
+            }
+        }
+        // @todo: missing modes
+        _ => first,
+    };
+
+    let blended = first * (1.0 - alpha) + result * alpha;
+    (blended.min(1.0).max(0.0) * 255.0).round() as u8
 }
