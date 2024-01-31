@@ -1,11 +1,10 @@
 use std::{collections::HashMap, ops::Range};
 
 use flate2::Decompress;
-use heck::ToUpperCamelCase;
 
 use crate::binary::{
     blend_mode::BlendMode,
-    chunks::{cel::CelContent, layer::LayerType, slice::SliceChunk},
+    chunks::{cel::CelContent, layer::{LayerType, LayerFlags}, slice::SliceChunk, tags::AnimationDirection},
     color_depth::ColorDepth,
     file::{parse_file, File},
     image::Image,
@@ -50,6 +49,8 @@ pub struct Frame {
 pub struct Tag {
     pub name: String,
     pub range: Range<u16>,
+    pub direction: AnimationDirection,
+    pub repeat: Option<u16>,
 }
 
 /// A layer in the file
@@ -58,6 +59,7 @@ pub struct Layer {
     pub name: String,
     pub opacity: u8,
     pub blend_mode: BlendMode,
+    pub visible: bool,
 }
 
 impl AsepriteFile<'_> {
@@ -75,6 +77,7 @@ impl AsepriteFile<'_> {
                         name: layer.name.to_string(),
                         opacity: layer.opacity,
                         blend_mode: layer.blend_mode,
+                        visible: layer.flags.contains(LayerFlags::VISIBLE),
                     })
                 } else {
                     None
@@ -100,8 +103,14 @@ impl AsepriteFile<'_> {
 
         for tag in file.tags.iter() {
             tags.push(Tag {
-                name: tag.name.to_upper_camel_case(),
+                name: tag.name.to_string(),
                 range: tag.frames.clone(),
+                direction: tag.animation_direction,
+                repeat: if tag.animation_repeat > 0 {
+                    Some(tag.animation_repeat)
+                } else {
+                    None
+                },
             });
         }
 
@@ -191,9 +200,17 @@ impl AsepriteFile<'_> {
         let frame = &self.frames[frame_index];
 
         for cell in frame.cells.iter() {
+
+            let layer = &self.layers[cell.layer_index];
+            if layer.visible == false {
+                continue;
+            }
+
+
             let mut cell_target = vec![0; usize::from(cell.size.0 * cell.size.1) * 4];
             self.load_image(cell.image_index, &mut cell_target).unwrap();
             let layer = &self.layers[cell.layer_index];
+
 
             hash += cell.image_index as u64;
             hash += cell.layer_index as u64 * 100;
