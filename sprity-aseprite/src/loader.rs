@@ -4,7 +4,12 @@ use flate2::Decompress;
 
 use crate::binary::{
     blend_mode::BlendMode,
-    chunks::{cel::CelContent, layer::{LayerType, LayerFlags}, slice::SliceChunk, tags::AnimationDirection},
+    chunks::{
+        cel::CelContent,
+        layer::{LayerFlags, LayerType},
+        slice::SliceChunk,
+        tags::AnimationDirection,
+    },
     color_depth::ColorDepth,
     file::{parse_file, File},
     image::Image,
@@ -190,8 +195,7 @@ impl AsepriteFile<'_> {
         let mut hash = 0u64;
 
         let target_size =
-            usize::from(usize::from(self.file.header.width) * usize::from(self.file.header.height))
-                * 4;
+            usize::from(self.file.header.width) * usize::from(self.file.header.height) * 4;
 
         if target.len() < target_size {
             return Err(LoadImageError::TargetBufferTooSmall);
@@ -200,17 +204,14 @@ impl AsepriteFile<'_> {
         let frame = &self.frames[frame_index];
 
         for cell in frame.cells.iter() {
-
             let layer = &self.layers[cell.layer_index];
             if layer.visible == false {
                 continue;
             }
 
-
-            let mut cell_target = vec![0; usize::from(cell.size.0 * cell.size.1) * 4];
+            let mut cell_target = vec![0; usize::from(cell.size.0) * usize::from(cell.size.1) * 4];
             self.load_image(cell.image_index, &mut cell_target).unwrap();
             let layer = &self.layers[cell.layer_index];
-
 
             hash += cell.image_index as u64;
             hash += cell.layer_index as u64 * 100;
@@ -221,11 +222,13 @@ impl AsepriteFile<'_> {
 
             for y in 0..cell.size.1 {
                 for x in 0..cell.size.0 {
-                    let origin_x = x + cell.origin.0 as u16;
-                    let origin_y = y + cell.origin.1 as u16;
+                    let origin_x = usize::from(x + cell.origin.0 as u16);
+                    let origin_y = usize::from(y + cell.origin.1 as u16);
 
-                    let target_index = (origin_y * self.file.header.width + origin_x) as usize;
-                    let cell_index = (y * cell.size.0 + x) as usize;
+                    let target_index =
+                        (origin_y * usize::from(self.file.header.width) + origin_x) as usize;
+                    let cell_index =
+                        (usize::from(y) * usize::from(cell.size.0) + usize::from(x)) as usize;
 
                     let target_pixel: &mut [u8] =
                         &mut target[target_index * 4..target_index * 4 + 4];
@@ -253,7 +256,7 @@ impl AsepriteFile<'_> {
     /// Get image loader for a given image index
     pub fn load_image(&self, index: usize, target: &mut [u8]) -> Result<(), LoadImageError> {
         let image = &self.images[index];
-        let target_size = usize::from(image.width * image.height * 4);
+        let target_size = usize::from(image.width) * usize::from(image.height) * 4;
         if target.len() < target_size {
             return Err(LoadImageError::TargetBufferTooSmall);
         }
