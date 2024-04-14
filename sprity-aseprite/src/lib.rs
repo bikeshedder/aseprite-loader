@@ -24,3 +24,4 @@
 pub mod binary;
 pub mod loader;
 mod tests;
+mod blend;
