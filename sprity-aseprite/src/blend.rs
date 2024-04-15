@@ -474,13 +474,12 @@ fn normal(back: Color, front: Color, opacity: u8) -> Color {
         return back;
     }
 
-    let front_a = mul8(front.a_i32(), opacity as i32);
+    let front_a = mul8(front.a_i32(), opacity as i32) as i32;
+    let res_a = front_a as i32 + back.a_i32() - mul8(back.a_i32(), front_a) as i32;
 
-    let res_a = front_a as i32 + back.a_i32() - mul8(back.a_i32(), front_a as i32) as i32;
-
-    let res_r = back.r_i32() + ((front.r_i32() - back.r_i32()) * front.a_i32()) / res_a;
-    let res_g = back.g_i32() + ((front.g_i32() - back.g_i32()) * front.a_i32()) / res_a;
-    let res_b = back.b_i32() + ((front.b_i32() - back.b_i32()) * front.a_i32()) / res_a;
+    let res_r = back.r_i32() + ((front.r_i32() - back.r_i32()) * front_a) / res_a;
+    let res_g = back.g_i32() + ((front.g_i32() - back.g_i32()) * front_a) / res_a;
+    let res_b = back.b_i32() + ((front.b_i32() - back.b_i32()) * front_a) / res_a;
 
     Color::from_slice_i32(&[res_r, res_g, res_b, res_a])
 }
