@@ -139,8 +139,11 @@ fn addition_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let g = back.g_i32() + front.g_i32();
     let b = back.b_i32() + front.b_i32();
 
-    let front = Color::from_slice_i32(&[r.min(255), g.min(255), b.min(255), front.a_i32()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_i32(&[r.min(255), g.min(255), b.min(255), front.a_i32()]),
+        opacity,
+    )
 }
 
 // --- subtract ----------------------------------------------------------------
@@ -153,8 +156,11 @@ fn subtract_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let g = back.g_i32() - front.g_i32();
     let b = back.b_i32() - front.b_i32();
 
-    let front = Color::from_slice_i32(&[r.max(0), g.max(0), b.max(0), front.a_i32()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_i32(&[r.max(0), g.max(0), b.max(0), front.a_i32()]),
+        opacity,
+    )
 }
 
 // --- hsl_hue -----------------------------------------------------------------
@@ -169,8 +175,11 @@ fn hsl_hue_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let (r, g, b) = set_saturation(front.r_f64(), front.g_f64(), front.b_f64(), sat);
     let (r, g, b) = set_luminocity(r, g, b, lum);
 
-    let front = Color::from_slice_f64(&[r, g, b, front.a_f64()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
+        opacity,
+    )
 }
 
 // --- hsl_saturation ----------------------------------------------------------
@@ -180,14 +189,16 @@ fn hsl_saturation(back: Color, front: Color, opacity: u8) -> Color {
 
 fn hsl_saturation_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let sat = saturation(front.r_f64(), front.g_f64(), front.b_f64());
-
     let lum = luminosity(back.r_f64(), back.g_f64(), back.b_f64());
 
     let (r, g, b) = set_saturation(back.r_f64(), back.g_f64(), back.b_f64(), sat);
     let (r, g, b) = set_luminocity(r, g, b, lum);
 
-    let front = Color::from_slice_f64(&[r, g, b, front.a_f64()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
+        opacity,
+    )
 }
 
 // --- hsl_color ---------------------------------------------------------------
@@ -198,8 +209,11 @@ fn hsl_color(back: Color, front: Color, opacity: u8) -> Color {
 fn hsl_color_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let lum = luminosity(back.r_f64(), back.g_f64(), back.b_f64());
     let (r, g, b) = set_luminocity(front.r_f64(), front.g_f64(), front.b_f64(), lum);
-    let front = Color::from_slice_f64(&[r, g, b, front.a_f64()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
+        opacity,
+    )
 }
 
 // --- hsl_luminosity ----------------------------------------------------------
@@ -211,8 +225,11 @@ fn hsl_luminosity_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let lum = luminosity(front.r_f64(), front.g_f64(), front.b_f64());
     let (r, g, b) = set_luminocity(back.r_f64(), back.g_f64(), back.b_f64(), lum);
 
-    let front = Color::from_slice_f64(&[r, g, b, front.a_f64()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
+        opacity,
+    )
 }
 
 // --- exclusion ----------------------------------------------------------------
@@ -269,8 +286,11 @@ fn soft_light_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let g = blend_soft_light(back.g_i32(), front.g_i32());
     let b = blend_soft_light(back.b_i32(), back.b_i32());
 
-    let front = Color::from_slice_i32(&[r, g, b, front.a_i32()]);
-    normal(back, front, opacity)
+    normal(
+        back,
+        Color::from_slice_i32(&[r, g, b, front.a_i32()]),
+        opacity,
+    )
 }
 
 fn blend_soft_light(b: i32, s: i32) -> i32 {
@@ -568,6 +588,8 @@ fn static_sort3(r: f64, g: f64, b: f64) -> (usize, usize, usize) {
     (min2.1, mid2.1, max2.1)
 }
 
+/// aseprite original
+/// https://github.com/aseprite/aseprite/blob/main/src/doc/blend_funcs.cpp#L371
 fn static_sort3_orig(r: f64, g: f64, b: f64) -> (usize, usize, usize) {
     // min = MIN(r, MIN(g, b));
     // ((r) < (((g) < (b)) ? (g) : (b))) ? (r) : (((g) < (b)) ? (g) : (b));
@@ -633,7 +655,6 @@ fn set_saturation(r: f64, g: f64, b: f64, sat: f64) -> (f64, f64, f64) {
         static_sort3(r, g, b)
     };
     if col[max] > col[min] {
-        // i.e., they're not all the same
         col[mid] = ((col[mid] - col[min]) * sat) / (col[max] - col[min]);
         col[max] = sat;
     } else {
