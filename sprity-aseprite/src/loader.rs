@@ -1,14 +1,21 @@
+use flate2::Decompress;
 use std::{collections::HashMap, ops::Range};
 
-use flate2::Decompress;
-
-use crate::binary::{
-    blend_mode::BlendMode,
-    chunks::{cel::CelContent, layer::{LayerType, LayerFlags}, slice::SliceChunk, tags::AnimationDirection},
-    color_depth::ColorDepth,
-    file::{parse_file, File},
-    image::Image,
-    palette::Palette,
+use crate::{
+    binary::{
+        blend_mode::BlendMode,
+        chunks::{
+            cel::CelContent,
+            layer::{LayerFlags, LayerType},
+            slice::SliceChunk,
+            tags::AnimationDirection,
+        },
+        color_depth::ColorDepth,
+        file::{parse_file, File},
+        image::Image,
+        palette::Palette,
+    },
+    blend::{blend_mode_to_blend_fn, Color},
 };
 
 #[derive(Debug)]
@@ -190,8 +197,7 @@ impl AsepriteFile<'_> {
         let mut hash = 0u64;
 
         let target_size =
-            usize::from(usize::from(self.file.header.width) * usize::from(self.file.header.height))
-                * 4;
+            usize::from(self.file.header.width) * usize::from(self.file.header.height) * 4;
 
         if target.len() < target_size {
             return Err(LoadImageError::TargetBufferTooSmall);
@@ -200,17 +206,14 @@ impl AsepriteFile<'_> {
         let frame = &self.frames[frame_index];
 
         for cell in frame.cells.iter() {
-
             let layer = &self.layers[cell.layer_index];
             if layer.visible == false {
                 continue;
             }
 
-
-            let mut cell_target = vec![0; usize::from(cell.size.0 * cell.size.1) * 4];
+            let mut cell_target = vec![0; usize::from(cell.size.0) * usize::from(cell.size.1) * 4];
             self.load_image(cell.image_index, &mut cell_target).unwrap();
             let layer = &self.layers[cell.layer_index];
-
 
             hash += cell.image_index as u64;
             hash += cell.layer_index as u64 * 100;
@@ -219,30 +222,30 @@ impl AsepriteFile<'_> {
             hash += cell.size.0 as u64 * 100000000;
             hash += cell.size.1 as u64 * 10000000000;
 
+            let blend_fn = blend_mode_to_blend_fn(layer.blend_mode);
+
             for y in 0..cell.size.1 {
                 for x in 0..cell.size.0 {
-                    let origin_x = x + cell.origin.0 as u16;
-                    let origin_y = y + cell.origin.1 as u16;
+                    let origin_x = usize::from(x + cell.origin.0 as u16);
+                    let origin_y = usize::from(y + cell.origin.1 as u16);
 
-                    let target_index = (origin_y * self.file.header.width + origin_x) as usize;
-                    let cell_index = (y * cell.size.0 + x) as usize;
+                    let target_index =
+                        (origin_y * usize::from(self.file.header.width) + origin_x) as usize;
+                    let cell_index =
+                        (usize::from(y) * usize::from(cell.size.0) + usize::from(x)) as usize;
 
+                    let cell_pixel: &[u8] = &cell_target[cell_index * 4..cell_index * 4 + 4];
                     let target_pixel: &mut [u8] =
                         &mut target[target_index * 4..target_index * 4 + 4];
 
-                    let cell_pixel: &[u8] = &cell_target[cell_index * 4..cell_index * 4 + 4];
-                    let cell_alpha = cell_target[cell_index * 4 + 3];
+                    let back = Color::from(target_pixel.as_ref());
+                    let front = Color::from(cell_pixel);
+                    let out = blend_fn(back, front, layer.opacity);
 
-                    let total_alpha = ((cell_alpha as u16 * layer.opacity as u16) / 255) as u8;
-
-                    for i in 0..4 {
-                        target_pixel[i] = blend_channel(
-                            target_pixel[i],
-                            cell_pixel[i],
-                            total_alpha,
-                            layer.blend_mode,
-                        );
-                    }
+                    target_pixel[0] = out.r;
+                    target_pixel[1] = out.g;
+                    target_pixel[2] = out.b;
+                    target_pixel[3] = out.a;
                 }
             }
         }
@@ -253,7 +256,7 @@ impl AsepriteFile<'_> {
     /// Get image loader for a given image index
     pub fn load_image(&self, index: usize, target: &mut [u8]) -> Result<(), LoadImageError> {
         let image = &self.images[index];
-        let target_size = usize::from(image.width * image.height * 4);
+        let target_size = usize::from(image.width) * usize::from(image.height) * 4;
         if target.len() < target_size {
             return Err(LoadImageError::TargetBufferTooSmall);
         }
@@ -367,33 +370,4 @@ fn indexed_to_rgba(
         target[i * 4 + 3] = color.alpha;
     }
     Ok(())
-}
-
-fn blend_channel(first: u8, second: u8, alpha: u8, blend_mode: BlendMode) -> u8 {
-    let alpha = alpha as f32 / 255.0;
-    let first = first as f32 / 255.0;
-    let second = second as f32 / 255.0;
-
-    let result = match blend_mode {
-        BlendMode::Normal => second,
-        BlendMode::Multiply => first * second,
-        BlendMode::Screen => 1.0 - (1.0 - first) * (1.0 - second),
-        BlendMode::Darken => first.min(second),
-        BlendMode::Lighten => first.max(second),
-        BlendMode::Addition => (first + second).min(1.0),
-        BlendMode::Subtract => (first - second).max(0.0),
-        BlendMode::Difference => (first - second).abs(),
-        BlendMode::Overlay => {
-            if first < 0.5 {
-                2.0 * first * second
-            } else {
-                1.0 - 2.0 * (1.0 - first) * (1.0 - second)
-            }
-        }
-        // @todo: missing modes
-        _ => first,
-    };
-
-    let blended = first * (1.0 - alpha) + result * alpha;
-    (blended.min(1.0).max(0.0) * 255.0).round() as u8
 }
