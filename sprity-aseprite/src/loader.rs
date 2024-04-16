@@ -15,7 +15,7 @@ use crate::{
         image::Image,
         palette::Palette,
     },
-    blend::{blend_mode_to_blend_fn, Color, FromSlice},
+    blend::{blend_mode_to_blend_fn, Color},
 };
 
 #[derive(Debug)]
@@ -238,14 +238,14 @@ impl AsepriteFile<'_> {
                     let target_pixel: &mut [u8] =
                         &mut target[target_index * 4..target_index * 4 + 4];
 
-                    let back = Color::from_slice_u8(target_pixel);
-                    let front = Color::from_slice_u8(cell_pixel);
+                    let back = Color::from(target_pixel.as_ref());
+                    let front = Color::from(cell_pixel);
                     let out = blend_fn(back, front, layer.opacity);
 
-                    target_pixel[0] = out[0];
-                    target_pixel[1] = out[1];
-                    target_pixel[2] = out[2];
-                    target_pixel[3] = out[3];
+                    target_pixel[0] = out.r;
+                    target_pixel[1] = out.g;
+                    target_pixel[2] = out.b;
+                    target_pixel[3] = out.a;
                 }
             }
         }

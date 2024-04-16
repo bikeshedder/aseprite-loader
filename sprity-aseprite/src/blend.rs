@@ -4,103 +4,103 @@ use crate::binary::blend_mode::BlendMode;
 // https://github.com/aseprite/aseprite/blob/master/src/doc/blend_funcs.cpp
 // original implementation: https://github.com/alpine-alpaca/asefile/blob/main/src/blend.rs
 
-pub(crate) type Color = [u8; 4];
-pub(crate) trait Channels {
-    fn r(&self) -> u8;
-    fn g(&self) -> u8;
-    fn b(&self) -> u8;
-    fn a(&self) -> u8;
-    fn r_i32(&self) -> i32;
-    fn g_i32(&self) -> i32;
-    fn b_i32(&self) -> i32;
-    fn a_i32(&self) -> i32;
-    fn r_f64(&self) -> f64;
-    fn g_f64(&self) -> f64;
-    fn b_f64(&self) -> f64;
-    fn a_f64(&self) -> f64;
+#[derive(Clone, Copy)]
+pub(crate) struct Color {
+    pub(crate) r: u8,
+    pub(crate) g: u8,
+    pub(crate) b: u8,
+    pub(crate) a: u8,
 }
 
-impl Channels for Color {
-    fn r(&self) -> u8 {
-        self[0]
-    }
-    fn g(&self) -> u8 {
-        self[1]
-    }
-    fn b(&self) -> u8 {
-        self[2]
-    }
-    fn a(&self) -> u8 {
-        self[3]
-    }
-
+impl Color {
     fn r_i32(&self) -> i32 {
-        self.r() as i32
+        self.r as i32
     }
-
     fn g_i32(&self) -> i32 {
-        self.g() as i32
+        self.g as i32
     }
-
     fn b_i32(&self) -> i32 {
-        self.b() as i32
+        self.b as i32
     }
-
     fn a_i32(&self) -> i32 {
-        self.a() as i32
+        self.a as i32
     }
-
     fn r_f64(&self) -> f64 {
-        self.a() as f64 / 255.
+        self.r as f64
     }
-
     fn g_f64(&self) -> f64 {
-        self.g() as f64 / 255.
+        self.g as f64
     }
-
     fn b_f64(&self) -> f64 {
-        self.b() as f64 / 255.
+        self.b as f64
     }
-
     fn a_f64(&self) -> f64 {
-        self.a() as f64 / 255.
+        self.a as f64
     }
 }
 
-pub(crate) trait FromSlice {
-    fn from_slice_u8(slice: &[u8]) -> Self;
-    fn from_slice_i32(slice: &[i32]) -> Self;
-    fn from_slice_f64(slice: &[f64]) -> Self;
+impl Color {
+    fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
 }
 
-impl FromSlice for Color {
-    fn from_slice_u8(slice: &[u8]) -> Color {
-        slice
-            .try_into()
-            .expect("slice too small to represent 32 bit color")
+impl From<&[u8]> for Color {
+    fn from(value: &[u8]) -> Self {
+        debug_assert!(value.len() == 4);
+        Self {
+            r: value[0],
+            g: value[1],
+            b: value[2],
+            a: value[3],
+        }
     }
+}
 
-    fn from_slice_i32(slice: &[i32]) -> Self {
-        debug_assert!((0..=255).contains(&slice[0]));
-        debug_assert!((0..=255).contains(&slice[1]));
-        debug_assert!((0..=255).contains(&slice[2]));
-        debug_assert!((0..=255).contains(&slice[3]));
-
-        [
-            slice[0] as u8,
-            slice[1] as u8,
-            slice[2] as u8,
-            slice[3] as u8,
-        ]
+impl From<&[u8; 4]> for Color {
+    fn from(value: &[u8; 4]) -> Self {
+        Self::from(value.as_ref())
     }
+}
 
-    fn from_slice_f64(slice: &[f64]) -> Self {
-        Color::from_slice_i32(&[
-            (slice[0] * 255.0) as i32,
-            (slice[1] * 255.0) as i32,
-            (slice[2] * 255.0) as i32,
-            (slice[3] * 255.0) as i32,
-        ])
+impl From<&[i32]> for Color {
+    fn from(value: &[i32]) -> Self {
+        debug_assert!(value.len() == 4);
+        debug_assert!((0..=255).contains(&value[0]));
+        debug_assert!((0..=255).contains(&value[1]));
+        debug_assert!((0..=255).contains(&value[2]));
+        debug_assert!((0..=255).contains(&value[3]));
+        Self {
+            r: value[0] as u8,
+            g: value[1] as u8,
+            b: value[2] as u8,
+            a: value[3] as u8,
+        }
+    }
+}
+impl From<&[i32; 4]> for Color {
+    fn from(value: &[i32; 4]) -> Self {
+        Self::from(value.as_ref())
+    }
+}
+
+impl From<&[f64]> for Color {
+    fn from(value: &[f64]) -> Self {
+        debug_assert!(value.len() == 4);
+        Self::from(
+            [
+                (value[0] * 255.0) as i32,
+                (value[1] * 255.0) as i32,
+                (value[2] * 255.0) as i32,
+                (value[3] * 255.0) as i32,
+            ]
+            .as_slice(),
+        )
+    }
+}
+impl From<&[f64; 4]> for Color {
+    fn from(value: &[f64; 4]) -> Self {
+        Self::from(value.as_ref())
     }
 }
 
@@ -141,7 +141,7 @@ fn addition_baseline(back: Color, front: Color, opacity: u8) -> Color {
 
     normal(
         back,
-        Color::from_slice_i32(&[r.min(255), g.min(255), b.min(255), front.a_i32()]),
+        Color::from(&[r.min(255), g.min(255), b.min(255), front.a_i32()]),
         opacity,
     )
 }
@@ -158,7 +158,7 @@ fn subtract_baseline(back: Color, front: Color, opacity: u8) -> Color {
 
     normal(
         back,
-        Color::from_slice_i32(&[r.max(0), g.max(0), b.max(0), front.a_i32()]),
+        Color::from(&[r.max(0), g.max(0), b.max(0), front.a_i32()]),
         opacity,
     )
 }
@@ -175,11 +175,7 @@ fn hsl_hue_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let (r, g, b) = set_saturation(front.r_f64(), front.g_f64(), front.b_f64(), sat);
     let (r, g, b) = set_luminocity(r, g, b, lum);
 
-    normal(
-        back,
-        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
-        opacity,
-    )
+    normal(back, Color::from(&[r, g, b, front.a_f64()]), opacity)
 }
 
 // --- hsl_saturation ----------------------------------------------------------
@@ -194,11 +190,7 @@ fn hsl_saturation_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let (r, g, b) = set_saturation(back.r_f64(), back.g_f64(), back.b_f64(), sat);
     let (r, g, b) = set_luminocity(r, g, b, lum);
 
-    normal(
-        back,
-        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
-        opacity,
-    )
+    normal(back, Color::from(&[r, g, b, front.a_f64()]), opacity)
 }
 
 // --- hsl_color ---------------------------------------------------------------
@@ -209,11 +201,7 @@ fn hsl_color(back: Color, front: Color, opacity: u8) -> Color {
 fn hsl_color_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let lum = luminosity(back.r_f64(), back.g_f64(), back.b_f64());
     let (r, g, b) = set_luminocity(front.r_f64(), front.g_f64(), front.b_f64(), lum);
-    normal(
-        back,
-        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
-        opacity,
-    )
+    normal(back, Color::from(&[r, g, b, front.a_f64()]), opacity)
 }
 
 // --- hsl_luminosity ----------------------------------------------------------
@@ -225,11 +213,7 @@ fn hsl_luminosity_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let lum = luminosity(front.r_f64(), front.g_f64(), front.b_f64());
     let (r, g, b) = set_luminocity(back.r_f64(), back.g_f64(), back.b_f64(), lum);
 
-    normal(
-        back,
-        Color::from_slice_f64(&[r, g, b, front.a_f64()]),
-        opacity,
-    )
+    normal(back, Color::from(&[r, g, b, front.a_f64()]), opacity)
 }
 
 // --- exclusion ----------------------------------------------------------------
@@ -286,11 +270,7 @@ fn soft_light_baseline(back: Color, front: Color, opacity: u8) -> Color {
     let g = blend_soft_light(back.g_i32(), front.g_i32());
     let b = blend_soft_light(back.b_i32(), back.b_i32());
 
-    normal(
-        back,
-        Color::from_slice_i32(&[r, g, b, front.a_i32()]),
-        opacity,
-    )
+    normal(back, Color::from(&[r, g, b, front.a_i32()]), opacity)
 }
 
 fn blend_soft_light(b: i32, s: i32) -> i32 {
@@ -440,10 +420,10 @@ fn blender<F>(back: Color, front: Color, opacity: u8, f: F) -> Color
 where
     F: Fn(Color, Color, u8) -> Color,
 {
-    if back.a() != 0 {
+    if back.a != 0 {
         let norm = normal(back, front, opacity);
         let blend = f(back, front, opacity);
-        let normal_to_blend_merge = merge(norm, blend, back.a());
+        let normal_to_blend_merge = merge(norm, blend, back.a);
         let src_total_alpha = mul8(front.a_i32(), opacity as i32);
         let composite_alpha = mul8(back.a_i32(), src_total_alpha as i32);
         merge(normal_to_blend_merge, blend, composite_alpha)
@@ -460,8 +440,7 @@ where
     let g = f(back.g_i32(), front.g_i32());
     let b = f(back.b_i32(), front.b_i32());
 
-    let res = [r, g, b, front.a()];
-    normal(back, res, opacity)
+    normal(back, Color::new(r, g, b, front.a), opacity)
 }
 
 fn mul8(a: i32, b: i32) -> u8 {
@@ -487,10 +466,10 @@ fn blend8(back: u8, src: u8, opacity: u8) -> u8 {
 }
 
 fn normal(back: Color, front: Color, opacity: u8) -> Color {
-    if back.a() == 0 {
+    if back.a == 0 {
         let alpha = mul8(front.a_i32(), opacity as i32);
-        return [front.r(), front.g(), front.b(), alpha];
-    } else if front.a() == 0 {
+        return Color::new(front.r, front.g, front.b, alpha);
+    } else if front.a == 0 {
         return back;
     }
 
@@ -501,7 +480,7 @@ fn normal(back: Color, front: Color, opacity: u8) -> Color {
     let res_g = back.g_i32() + ((front.g_i32() - back.g_i32()) * front_a) / res_a;
     let res_b = back.b_i32() + ((front.b_i32() - back.b_i32()) * front_a) / res_a;
 
-    Color::from_slice_i32(&[res_r, res_g, res_b, res_a])
+    Color::from(&[res_r, res_g, res_b, res_a])
 }
 
 fn merge(back: Color, front: Color, opacity: u8) -> Color {
@@ -509,25 +488,25 @@ fn merge(back: Color, front: Color, opacity: u8) -> Color {
     let res_g;
     let res_b;
 
-    if back.a() == 0 {
-        res_r = front.r();
-        res_g = front.g();
-        res_b = front.b();
-    } else if front.a() == 0 {
-        res_r = back.r();
-        res_g = back.g();
-        res_b = back.b();
+    if back.a == 0 {
+        res_r = front.r;
+        res_g = front.g;
+        res_b = front.b;
+    } else if front.a == 0 {
+        res_r = back.r;
+        res_g = back.g;
+        res_b = back.b;
     } else {
-        res_r = blend8(back.r(), front.r(), opacity);
-        res_g = blend8(back.g(), front.g(), opacity);
-        res_b = blend8(back.b(), front.b(), opacity);
+        res_r = blend8(back.r, front.r, opacity);
+        res_g = blend8(back.g, front.g, opacity);
+        res_b = blend8(back.b, front.b, opacity);
     }
-    let res_a = blend8(back.a(), front.a(), opacity);
+    let res_a = blend8(back.a, front.a, opacity);
 
     if res_a == 0 {
-        [0, 0, 0, 0]
+        Color::new(0, 0, 0, 0)
     } else {
-        [res_r, res_g, res_b, res_a]
+        Color::new(res_r, res_g, res_b, res_a)
     }
 }
 
