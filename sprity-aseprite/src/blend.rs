@@ -104,28 +104,28 @@ impl FromSlice for Color {
     }
 }
 
-type BlendFn = Box<dyn Fn(Color, Color, u8) -> Color>;
+type BlendFn = fn(Color, Color, u8) -> Color;
 pub(crate) fn blend_mode_to_blend_fn(mode: BlendMode) -> BlendFn {
     match mode {
-        BlendMode::Normal => Box::new(normal),
-        BlendMode::Multiply => Box::new(multiply),
-        BlendMode::Screen => Box::new(screen),
-        BlendMode::Overlay => Box::new(overlay),
-        BlendMode::Darken => Box::new(darken),
-        BlendMode::Lighten => Box::new(lighten),
-        BlendMode::ColorDodge => Box::new(color_dodge),
-        BlendMode::ColorBurn => Box::new(color_burn),
-        BlendMode::HardLight => Box::new(hard_light),
-        BlendMode::SoftLight => Box::new(soft_light),
-        BlendMode::Difference => Box::new(difference),
-        BlendMode::Exclusion => Box::new(exclusion),
-        BlendMode::Hue => Box::new(hsl_hue),
-        BlendMode::Saturation => Box::new(hsl_saturation),
-        BlendMode::Color => Box::new(hsl_color),
-        BlendMode::Luminosity => Box::new(hsl_luminosity),
-        BlendMode::Addition => Box::new(addition),
-        BlendMode::Subtract => Box::new(subtract),
-        BlendMode::Divide => Box::new(divide),
+        BlendMode::Normal => normal,
+        BlendMode::Multiply => multiply,
+        BlendMode::Screen => screen,
+        BlendMode::Overlay => overlay,
+        BlendMode::Darken => darken,
+        BlendMode::Lighten => lighten,
+        BlendMode::ColorDodge => color_dodge,
+        BlendMode::ColorBurn => color_burn,
+        BlendMode::HardLight => hard_light,
+        BlendMode::SoftLight => soft_light,
+        BlendMode::Difference => difference,
+        BlendMode::Exclusion => exclusion,
+        BlendMode::Hue => hsl_hue,
+        BlendMode::Saturation => hsl_saturation,
+        BlendMode::Color => hsl_color,
+        BlendMode::Luminosity => hsl_luminosity,
+        BlendMode::Addition => addition,
+        BlendMode::Subtract => subtract,
+        BlendMode::Divide => divide,
         m => panic!("unimplemented blend mode: {:?}", m),
     }
 }
