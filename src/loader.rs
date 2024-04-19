@@ -31,10 +31,11 @@ pub struct AsepriteFile<'a> {
     images: Vec<Image<'a>>,
 }
 
-/// A cell in a frame
-/// This is a reference to an image cell
+/// A cel in a frame
+///
+/// This is a reference to an image cel
 #[derive(Debug, Copy, Clone)]
-pub struct FrameCell {
+pub struct FrameCel {
     pub origin: (i16, i16),
     pub size: (u16, u16),
     pub layer_index: usize,
@@ -42,15 +43,17 @@ pub struct FrameCell {
 }
 
 /// A frame in the file
-/// This is a collection of cells for each layer
+///
+/// This is a collection of cels for each layer
 #[derive(Debug, Clone)]
 pub struct Frame {
     pub duration: u16,
     pub origin: (i16, i16),
-    pub cells: Vec<FrameCell>,
+    pub cels: Vec<FrameCel>,
 }
 
 /// A tag in the file
+///
 /// This is a range of frames over the frames in the file, ordered by frame index
 #[derive(Debug, Clone)]
 pub struct Tag {
@@ -122,7 +125,7 @@ impl AsepriteFile<'_> {
         }
 
         for (index, frame) in file.frames.iter().enumerate() {
-            let mut cells: Vec<FrameCell> = Vec::new();
+            let mut cels: Vec<FrameCel> = Vec::new();
             for cel in frame.cels.iter().filter_map(|x| x.as_ref()) {
                 let image_index = match cel.content {
                     CelContent::Image(_) => image_map[&(index, cel.layer_index.into())],
@@ -130,19 +133,19 @@ impl AsepriteFile<'_> {
                         .get(&(frame_position.into(), cel.layer_index.into()))
                         .ok_or_else(|| LoadSpriteError::Parse {
                             message: format!(
-                                "invalid linked cell at frame {} layer {}",
+                                "invalid linked cel at frame {} layer {}",
                                 index, cel.layer_index
                             ),
                         })?,
                     _ => {
                         return Err(LoadSpriteError::Parse {
-                            message: "invalid cell".to_owned(),
+                            message: "invalid cel".to_owned(),
                         })
                     }
                 };
                 let width = image_vec[image_index].width;
                 let height = image_vec[image_index].height;
-                cells.push(FrameCell {
+                cels.push(FrameCel {
                     origin: (cel.x, cel.y),
                     size: (width, height),
                     layer_index: cel.layer_index.into(),
@@ -153,7 +156,7 @@ impl AsepriteFile<'_> {
             frames.push(Frame {
                 duration: frame.duration,
                 origin: (0, 0),
-                cells,
+                cels,
             });
         }
 
@@ -188,7 +191,7 @@ impl AsepriteFile<'_> {
 
     /// Get image loader for a given frame index
     /// This will combine all layers into a single image
-    /// returns a hash describing the image, since cells can be reused in multiple frames
+    /// returns a hash describing the image, since cels can be reused in multiple frames
     pub fn combined_frame_image(
         &self,
         frame_index: usize,
@@ -205,39 +208,39 @@ impl AsepriteFile<'_> {
 
         let frame = &self.frames[frame_index];
 
-        for cell in frame.cells.iter() {
-            let layer = &self.layers[cell.layer_index];
+        for cel in frame.cels.iter() {
+            let layer = &self.layers[cel.layer_index];
             if !layer.visible {
                 continue;
             }
 
-            let mut cell_target = vec![0; usize::from(cell.size.0) * usize::from(cell.size.1) * 4];
-            self.load_image(cell.image_index, &mut cell_target).unwrap();
-            let layer = &self.layers[cell.layer_index];
+            let mut cel_target = vec![0; usize::from(cel.size.0) * usize::from(cel.size.1) * 4];
+            self.load_image(cel.image_index, &mut cel_target).unwrap();
+            let layer = &self.layers[cel.layer_index];
 
-            hash += cell.image_index as u64;
-            hash += cell.layer_index as u64 * 100;
-            hash += cell.origin.0 as u64 * 10000;
-            hash += cell.origin.1 as u64 * 1000000;
-            hash += cell.size.0 as u64 * 100000000;
-            hash += cell.size.1 as u64 * 10000000000;
+            hash += cel.image_index as u64;
+            hash += cel.layer_index as u64 * 100;
+            hash += cel.origin.0 as u64 * 10000;
+            hash += cel.origin.1 as u64 * 1000000;
+            hash += cel.size.0 as u64 * 100000000;
+            hash += cel.size.1 as u64 * 10000000000;
 
             let blend_fn = blend_mode_to_blend_fn(layer.blend_mode);
 
-            for y in 0..cell.size.1 {
-                for x in 0..cell.size.0 {
-                    let origin_x = usize::from(x + cell.origin.0 as u16);
-                    let origin_y = usize::from(y + cell.origin.1 as u16);
+            for y in 0..cel.size.1 {
+                for x in 0..cel.size.0 {
+                    let origin_x = usize::from(x + cel.origin.0 as u16);
+                    let origin_y = usize::from(y + cel.origin.1 as u16);
 
                     let target_index = origin_y * usize::from(self.file.header.width) + origin_x;
-                    let cell_index = usize::from(y) * usize::from(cell.size.0) + usize::from(x);
+                    let cel_index = usize::from(y) * usize::from(cel.size.0) + usize::from(x);
 
-                    let cell_pixel: &[u8] = &cell_target[cell_index * 4..cell_index * 4 + 4];
+                    let cel_pixel: &[u8] = &cel_target[cel_index * 4..cel_index * 4 + 4];
                     let target_pixel: &mut [u8] =
                         &mut target[target_index * 4..target_index * 4 + 4];
 
                     let back = Color::from(&*target_pixel);
-                    let front = Color::from(cell_pixel);
+                    let front = Color::from(cel_pixel);
                     let out = blend_fn(back, front, layer.opacity);
 
                     target_pixel[0] = out.r;
@@ -371,7 +374,7 @@ fn indexed_to_rgba(
 }
 
 #[test]
-fn test_cell() {
+fn test_cel() {
     use image::RgbaImage;
     use tempfile::TempDir;
 
@@ -380,16 +383,16 @@ fn test_cell() {
     let file = AsepriteFile::load(&file).unwrap();
 
     for frame in file.frames().iter() {
-        for (i, cell) in frame.cells.iter().enumerate() {
-            let (width, height) = cell.size;
+        for (i, cel) in frame.cels.iter().enumerate() {
+            let (width, height) = cel.size;
 
             let mut target = vec![0; usize::from(width * height) * 4];
-            file.load_image(cell.image_index, &mut target).unwrap();
+            file.load_image(cel.image_index, &mut target).unwrap();
 
             let image = RgbaImage::from_raw(u32::from(width), u32::from(height), target).unwrap();
 
             let tmp = TempDir::with_prefix("aseprite-loader").unwrap();
-            let path = tmp.path().join(format!("cell_{}.png", i));
+            let path = tmp.path().join(format!("cel_{}.png", i));
             image.save(path).unwrap();
         }
     }
