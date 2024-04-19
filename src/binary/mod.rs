@@ -1,6 +1,7 @@
 //! This module contains a parser for the .aseprite file specification in
 //! version 1.3 as described in the `aseprite/aseprite` repository on GitHub:
 //! <https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md>
+#![allow(missing_docs)]
 
 pub mod blend_mode;
 pub mod chunk;
