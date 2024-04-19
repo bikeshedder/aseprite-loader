@@ -207,7 +207,7 @@ impl AsepriteFile<'_> {
 
         for cell in frame.cells.iter() {
             let layer = &self.layers[cell.layer_index];
-            if layer.visible == false {
+            if !layer.visible {
                 continue;
             }
 
@@ -229,16 +229,14 @@ impl AsepriteFile<'_> {
                     let origin_x = usize::from(x + cell.origin.0 as u16);
                     let origin_y = usize::from(y + cell.origin.1 as u16);
 
-                    let target_index =
-                        (origin_y * usize::from(self.file.header.width) + origin_x) as usize;
-                    let cell_index =
-                        (usize::from(y) * usize::from(cell.size.0) + usize::from(x)) as usize;
+                    let target_index = origin_y * usize::from(self.file.header.width) + origin_x;
+                    let cell_index = usize::from(y) * usize::from(cell.size.0) + usize::from(x);
 
                     let cell_pixel: &[u8] = &cell_target[cell_index * 4..cell_index * 4 + 4];
                     let target_pixel: &mut [u8] =
                         &mut target[target_index * 4..target_index * 4 + 4];
 
-                    let back = Color::from(target_pixel.as_ref());
+                    let back = Color::from(&*target_pixel);
                     let front = Color::from(cell_pixel);
                     let out = blend_fn(back, front, layer.opacity);
 
