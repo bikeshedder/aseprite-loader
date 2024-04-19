@@ -369,3 +369,50 @@ fn indexed_to_rgba(
     }
     Ok(())
 }
+
+#[test]
+fn test_cell() {
+    use image::RgbaImage;
+    use tempfile::TempDir;
+
+    let path = "./tests/combine.aseprite";
+    let file = std::fs::read(path).unwrap();
+    let file = AsepriteFile::load(&file).unwrap();
+
+    for frame in file.frames().iter() {
+        for (i, cell) in frame.cells.iter().enumerate() {
+            let (width, height) = cell.size;
+
+            let mut target = vec![0; usize::from(width * height) * 4];
+            file.load_image(cell.image_index, &mut target).unwrap();
+
+            let image = RgbaImage::from_raw(u32::from(width), u32::from(height), target).unwrap();
+
+            let tmp = TempDir::with_prefix("aseprite-loader").unwrap();
+            let path = tmp.path().join(format!("cell_{}.png", i));
+            image.save(path).unwrap();
+        }
+    }
+}
+
+#[test]
+fn test_combine() {
+    use image::RgbaImage;
+    use tempfile::TempDir;
+
+    let path = "./tests/combine.aseprite";
+    let file = std::fs::read(path).unwrap();
+    let file = AsepriteFile::load(&file).unwrap();
+
+    let (width, height) = file.size();
+    for (index, _) in file.frames().iter().enumerate() {
+        let mut target = vec![0; usize::from(width * height) * 4];
+        let _ = file.combined_frame_image(index, &mut target).unwrap();
+        let image = RgbaImage::from_raw(u32::from(width), u32::from(height), target).unwrap();
+
+        let tmp = TempDir::with_prefix("aseprite-loader").unwrap();
+        println!("{:?}", tmp);
+        let path = tmp.path().join(format!("combined_{}.png", index));
+        image.save(path).unwrap();
+    }
+}

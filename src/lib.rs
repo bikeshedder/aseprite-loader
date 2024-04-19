@@ -22,6 +22,5 @@
 #![allow(clippy::uninlined_format_args)]
 
 pub mod binary;
-pub mod loader;
-mod tests;
 mod blend;
+pub mod loader;
