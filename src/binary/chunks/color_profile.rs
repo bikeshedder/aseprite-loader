@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::take,
     combinator::{flat_map, map},
 };
-use strum_macros::FromRepr;
+use strum::FromRepr;
 
 use crate::binary::{
     errors::ParseResult,

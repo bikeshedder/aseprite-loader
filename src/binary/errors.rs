@@ -7,7 +7,7 @@ use super::{
     scalars::{Dword, Word},
 };
 
-#[derive(Debug, strum_macros::Display)]
+#[derive(Debug, strum::Display)]
 pub enum ParseError<'a> {
     /// This variant is used when the conversion between
     /// DWORD (u32) to usize fails. The only way this can

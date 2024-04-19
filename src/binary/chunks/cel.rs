@@ -1,5 +1,5 @@
 use nom::bytes::complete::take;
-use strum_macros::FromRepr;
+use strum::FromRepr;
 
 use crate::binary::{
     errors::ParseResult,

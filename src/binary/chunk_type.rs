@@ -1,5 +1,5 @@
 use nom::combinator::map;
-use strum_macros::FromRepr;
+use strum::FromRepr;
 
 use super::{errors::ParseResult, scalars::word};
 

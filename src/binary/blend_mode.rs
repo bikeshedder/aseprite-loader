@@ -1,4 +1,4 @@
-use strum_macros::FromRepr;
+use strum::FromRepr;
 
 use super::{
     errors::ParseResult,

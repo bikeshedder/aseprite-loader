@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use nom::{bytes::complete::take, multi::count};
-use strum_macros::FromRepr;
+use strum::FromRepr;
 
 use crate::binary::{
     errors::{ParseError, ParseResult},

@@ -7,7 +7,7 @@ use nom::{
         le_f32, le_f64, le_i16, le_i32, le_i64, le_i8, le_u16, le_u32, le_u64, le_u8,
     },
 };
-use strum_macros::FromRepr;
+use strum::FromRepr;
 
 use crate::binary::{
     errors::{ParseError, ParseResult},
