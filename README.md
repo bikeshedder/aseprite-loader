@@ -1,18 +1,15 @@
-# Sprity [![Latest Version](https://img.shields.io/crates/v/sprity.svg)](https://crates.io/crates/sprity)
+# Aseprite Loader [![Latest Version](https://img.shields.io/crates/v/aseprite-loader.svg)](https://crates.io/crates/aseprite-loader)
 
-Sprity is a sprite sheet loader for animated and layered sprites.
+This crate implements a zero-copy parser for aseprite files according to the
+Aseprite File Format (.ase/.aseprite) Specifications:
 
-## Features
-
-| Feature    | Description                       | Extra dependencies | Default |
-| ---------- | --------------------------------- | ------------------ | ------- |
-| `aseprite` | Enable support for aseprite files | `sprity-aseprite`  | yes     |
+<https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md>
 
 ## License
 
 Licensed under either of
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0)>
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT)>
+- Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0)>
+- MIT license ([LICENSE-MIT](../LICENSE-MIT) or <http://opensource.org/licenses/MIT)>
 
 at your option.
