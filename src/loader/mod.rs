@@ -1,5 +1,11 @@
+//! This module contains the actual loader API. This API is based on the
+//! `binary`-module of this crate and does provide a convenience API for
+//! accessing layers, frames, tags and fully blended images.
+
 use flate2::Decompress;
 use std::{collections::HashMap, ops::Range};
+
+mod blend;
 
 use crate::{
     binary::{
@@ -15,9 +21,10 @@ use crate::{
         image::Image,
         palette::Palette,
     },
-    blend::{blend_mode_to_blend_fn, Color},
+    loader::blend::{blend_mode_to_blend_fn, Color},
 };
 
+/// This can be used to load an Aseprite file.
 #[derive(Debug)]
 pub struct AsepriteFile<'a> {
     file: File<'a>,

@@ -22,5 +22,4 @@
 #![allow(clippy::uninlined_format_args)]
 
 pub mod binary;
-mod blend;
 pub mod loader;
