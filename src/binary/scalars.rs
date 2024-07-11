@@ -44,7 +44,7 @@ pub struct Rect {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Fixed(u16, u16);
+pub struct Fixed(pub u16, pub u16);
 
 #[derive(Debug, Copy, Clone)]
 pub struct RGB {
