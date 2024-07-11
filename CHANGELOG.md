@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Change `CelType::Unknown` to include the `cel_type`
+
 # [0.2.0] - 2024-04-20
 
 ### Added

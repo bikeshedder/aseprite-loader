@@ -69,7 +69,10 @@ pub enum CelContent<'a> {
         /// compressed with ZLIB method (see NOTE.3)
         data: &'a [u8],
     },
-    Unknown(&'a [u8]),
+    Unknown {
+        cel_type: Word,
+        data: &'a [u8],
+    },
 }
 
 pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
@@ -126,7 +129,10 @@ pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
                 data: input,
             }
         }
-        CelType::Unknown(_) => CelContent::Unknown(input),
+        CelType::Unknown(cel_type) => CelContent::Unknown {
+            cel_type,
+            data: input,
+        },
     };
     Ok((
         &input[input.len()..],
