@@ -109,7 +109,7 @@ fn test_parse_header() {
             frames: 1,
             width: 32,
             height: 32,
-            color_depth: super::color_depth::ColorDepth::Rgba,
+            color_depth: ColorDepth::Rgba,
             flags: 1,
             speed: 100,
             transparent_index: 0,
