@@ -3,7 +3,10 @@
 //! accessing layers, frames, tags and fully blended images.
 
 use flate2::Decompress;
-use std::{collections::HashMap, ops::Range};
+use std::{
+    collections::HashMap,
+    ops::{Range, RangeInclusive},
+};
 
 mod blend;
 
@@ -65,7 +68,7 @@ pub struct Frame {
 #[derive(Debug, Clone)]
 pub struct Tag {
     pub name: String,
-    pub range: Range<u16>,
+    pub range: RangeInclusive<u16>,
     pub direction: AnimationDirection,
     pub repeat: Option<u16>,
 }

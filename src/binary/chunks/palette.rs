@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::RangeInclusive;
 
 use bitflags::bitflags;
 use nom::{bytes::complete::take, combinator::cond, multi::count};
@@ -13,7 +13,7 @@ use crate::binary::{
 
 #[derive(Debug)]
 pub struct PaletteChunk<'a> {
-    pub indices: Range<u8>,
+    pub indices: RangeInclusive<u8>,
     pub entries: Vec<PaletteEntry<'a>>,
 }
 
@@ -49,7 +49,7 @@ pub fn parse_palette_chunk(input: &[u8]) -> ParseResult<'_, PaletteChunk<'_>> {
     Ok((
         input,
         PaletteChunk {
-            indices: (first_color_index..last_color_index + 1),
+            indices: (first_color_index..=last_color_index),
             entries,
         },
     ))

@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 
 use nom::{bytes::complete::take, multi::count};
 use strum::FromRepr;
@@ -16,7 +16,7 @@ pub struct TagsChunk<'a> {
 #[allow(deprecated)]
 #[derive(Debug)]
 pub struct Tag<'a> {
-    pub frames: Range<Word>,
+    pub frames: RangeInclusive<Word>,
     pub animation_direction: AnimationDirection,
     pub animation_repeat: Word,
     #[deprecated]
@@ -65,7 +65,7 @@ pub fn parse_tag(input: &[u8]) -> ParseResult<'_, Tag<'_>> {
     Ok((
         input,
         Tag {
-            frames: (from_frame..to_frame + 1),
+            frames: (from_frame..=to_frame),
             animation_direction,
             animation_repeat,
             color: [color[0], color[1], color[2]],

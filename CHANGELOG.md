@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change `CelType::Unknown` to include the `cel_type`
 - Make `Fixed` fields public
+- Replace `Range` by `InclusiveRange` to avoid overflow errors
 
 # [0.2.0] - 2024-04-20
 
