@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release
 
 [unreleased]: https://github.com/bikeshedder/aseprite-loader/compare/v0.3.0...HEAD
-[0.2.0]: https://github.com/bikeshedder/aseprite-loader/compare/sprity-aseprite-v0.2.0...v0.3.0
+[0.3.0]: https://github.com/bikeshedder/aseprite-loader/compare/sprity-aseprite-v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bikeshedder/aseprite-loader/compare/sprity-aseprite-v0.1.2...v0.2.0
 [0.1.2]: https://github.com/bikeshedder/aseprite-loader/compare/sprity-aseprite-v0.1.1...sprity-aseprite-v0.1.2
 [0.1.1]: https://github.com/bikeshedder/aseprite-loader/compare/sprity-aseprite-v0.1.0...sprity-aseprite-v0.1.1
