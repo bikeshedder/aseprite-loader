@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Make `AsepriteFile` fields public
+- Make `loader::decompress` function public
+
 ## [0.3.0] - 2024-07-11
 
 ### Changed
