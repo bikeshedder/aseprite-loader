@@ -5,6 +5,7 @@
 use flate2::Decompress;
 use std::{
     collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
     ops::{Range, RangeInclusive},
 };
 
@@ -207,7 +208,7 @@ impl AsepriteFile<'_> {
         frame_index: usize,
         target: &mut [u8],
     ) -> Result<u64, LoadImageError> {
-        let mut hash = 0u64;
+        let mut hasher = DefaultHasher::new();
 
         let target_size =
             usize::from(self.file.header.width) * usize::from(self.file.header.height) * 4;
@@ -228,12 +229,7 @@ impl AsepriteFile<'_> {
             self.load_image(cel.image_index, &mut cel_target).unwrap();
             let layer = &self.layers[cel.layer_index];
 
-            hash += cel.image_index as u64;
-            hash += cel.layer_index as u64 * 100;
-            hash += cel.origin.0 as u64 * 10000;
-            hash += cel.origin.1 as u64 * 1000000;
-            hash += cel.size.0 as u64 * 100000000;
-            hash += cel.size.1 as u64 * 10000000000;
+            (cel.image_index, cel.layer_index, cel.origin, cel.size).hash(&mut hasher);
 
             let blend_fn = blend_mode_to_blend_fn(layer.blend_mode);
 
@@ -261,7 +257,7 @@ impl AsepriteFile<'_> {
             }
         }
 
-        Ok(hash)
+        Ok(hasher.finish())
     }
 
     /// Get image loader for a given image index

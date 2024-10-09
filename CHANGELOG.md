@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Make `AsepriteFile` fields public
 - Make `loader::decompress` function public
 
+### Fixed
+
+- Fix hashing implementation by using the `DefaultHasher` instead of a
+  custom implementation.
+
 ## [0.3.0] - 2024-07-11
 
 ### Changed
