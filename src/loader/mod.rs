@@ -30,15 +30,15 @@ use crate::{
 /// This can be used to load an Aseprite file.
 #[derive(Debug)]
 pub struct AsepriteFile<'a> {
-    file: File<'a>,
+    pub file: File<'a>,
     /// All layers in the file in order
-    layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
     /// All frames in the file in order
-    frames: Vec<Frame>,
+    pub frames: Vec<Frame>,
     /// All tags in the file
-    tags: Vec<Tag>,
+    pub tags: Vec<Tag>,
     /// All images in the file
-    images: Vec<Image<'a>>,
+    pub images: Vec<Image<'a>>,
 }
 
 /// A cel in a frame
@@ -343,7 +343,7 @@ pub enum LoadImageError {
     InvalidImageData,
 }
 
-fn decompress(data: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {
+pub fn decompress(data: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {
     let mut decompressor = Decompress::new(true);
     match decompressor.decompress(data, target, flate2::FlushDecompress::Finish) {
         Ok(flate2::Status::Ok | flate2::Status::BufError) => Err(LoadImageError::DecompressError),
