@@ -6,7 +6,7 @@ use flate2::Decompress;
 use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
-    ops::{Range, RangeInclusive},
+    ops::RangeInclusive,
 };
 
 mod blend;

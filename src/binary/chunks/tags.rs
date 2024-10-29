@@ -1,4 +1,4 @@
-use std::ops::{Range, RangeInclusive};
+use std::ops::RangeInclusive;
 
 use nom::{bytes::complete::take, multi::count};
 use strum::FromRepr;
