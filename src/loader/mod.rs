@@ -4,8 +4,9 @@
 
 use flate2::Decompress;
 use std::{
+    collections::hash_map::DefaultHasher,
     collections::HashMap,
-    hash::{DefaultHasher, Hash, Hasher},
+    hash::{Hash, Hasher},
     ops::RangeInclusive,
 };
 
