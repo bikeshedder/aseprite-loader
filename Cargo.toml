@@ -9,6 +9,7 @@ keywords = ["aseprite", "binary", "loader", "nom"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bikeshedder/aseprite-loader"
 readme = "README.md"
+rust-version = "1.70"
 
 [dependencies]
 bitflags = "2"
