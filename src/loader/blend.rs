@@ -14,28 +14,28 @@ pub(crate) struct Color {
 
 impl Color {
     fn r_i32(&self) -> i32 {
-        self.r as i32
+        self.r.into()
     }
     fn g_i32(&self) -> i32 {
-        self.g as i32
+        self.g.into()
     }
     fn b_i32(&self) -> i32 {
-        self.b as i32
+        self.b.into()
     }
     fn a_i32(&self) -> i32 {
-        self.a as i32
+        self.a.into()
     }
     fn r_f64(&self) -> f64 {
-        self.r as f64
+        self.r.into()
     }
     fn g_f64(&self) -> f64 {
-        self.g as f64
+        self.g.into()
     }
     fn b_f64(&self) -> f64 {
-        self.b as f64
+        self.b.into()
     }
     fn a_f64(&self) -> f64 {
-        self.a as f64
+        self.a.into()
     }
 }
 
@@ -78,6 +78,7 @@ impl From<&[i32]> for Color {
         }
     }
 }
+
 impl From<&[i32; 4]> for Color {
     fn from(value: &[i32; 4]) -> Self {
         Self::from(value.as_ref())

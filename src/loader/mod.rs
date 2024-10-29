@@ -382,7 +382,7 @@ fn indexed_to_rgba(
         return Err(LoadImageError::InvalidImageData);
     }
     for (i, px) in source.iter().enumerate() {
-        let color = palette.colors[*px as usize];
+        let color = palette.colors[usize::from(*px)];
         target[i * 4] = color.red;
         target[i * 4 + 1] = color.green;
         target[i * 4 + 2] = color.blue;
