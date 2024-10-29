@@ -10,10 +10,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
 
+  msrv:
+    name: Check MSRV
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update nightly
+      - run: rustup update 1.70 && rustup default 1.70
+      - run: cargo +nightly update -Z minimal-versions
+      - run: cargo check --all-features
 
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Build
