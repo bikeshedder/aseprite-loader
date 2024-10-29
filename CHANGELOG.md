@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix index out of bounds error in `combined_frame_image` code when
+  cels overlap are moved outside the visible bounds of a frame.
+
 ## [0.3.1] - 2024-10-09
 
 ### Changed

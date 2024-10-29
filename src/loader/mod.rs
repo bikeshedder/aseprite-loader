@@ -235,10 +235,21 @@ impl AsepriteFile<'_> {
 
             for y in 0..cel.size.1 {
                 for x in 0..cel.size.0 {
-                    let origin_x = usize::from(x + cel.origin.0 as u16);
-                    let origin_y = usize::from(y + cel.origin.1 as u16);
+                    let Some(target_x) = x.checked_add_signed(cel.origin.0) else {
+                        continue;
+                    };
+                    if target_x > self.file.header.width {
+                        continue;
+                    }
+                    let Some(target_y) = y.checked_add_signed(cel.origin.1) else {
+                        continue;
+                    };
+                    if target_y > self.file.header.height {
+                        continue;
+                    }
 
-                    let target_index = origin_y * usize::from(self.file.header.width) + origin_x;
+                    let target_index = usize::from(target_y) * usize::from(self.file.header.width)
+                        + usize::from(target_x);
                     let cel_index = usize::from(y) * usize::from(cel.size.0) + usize::from(x);
 
                     let cel_pixel: &[u8] = &cel_target[cel_index * 4..cel_index * 4 + 4];
@@ -423,5 +434,18 @@ fn test_combine() {
         println!("{:?}", tmp);
         let path = tmp.path().join(format!("combined_{}.png", index));
         image.save(path).unwrap();
+    }
+}
+
+/// https://github.com/bikeshedder/aseprite-loader/issues/4
+#[test]
+fn test_issue_4() {
+    let path = "./tests/issue_4.aseprite";
+    let file = std::fs::read(path).unwrap();
+    let file = AsepriteFile::load(&file).unwrap();
+    let (width, height) = file.size();
+    let mut buf = vec![0; usize::from(width * height) * 4];
+    for idx in 0..file.frames().len() {
+        let _ = file.combined_frame_image(idx, &mut buf).unwrap();
     }
 }
