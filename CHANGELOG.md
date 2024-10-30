@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix compatibiltiy with Rust 1.70
+- Fix off-by-one error in `combined_frame_image` code
 
 ## [0.3.2] - 2024-10-29
 

@@ -239,13 +239,13 @@ impl AsepriteFile<'_> {
                     let Some(target_x) = x.checked_add_signed(cel.origin.0) else {
                         continue;
                     };
-                    if target_x > self.file.header.width {
+                    if target_x >= self.file.header.width {
                         continue;
                     }
                     let Some(target_y) = y.checked_add_signed(cel.origin.1) else {
                         continue;
                     };
-                    if target_y > self.file.header.height {
+                    if target_y >= self.file.header.height {
                         continue;
                     }
 
@@ -440,8 +440,20 @@ fn test_combine() {
 
 /// https://github.com/bikeshedder/aseprite-loader/issues/4
 #[test]
-fn test_issue_4() {
-    let path = "./tests/issue_4.aseprite";
+fn test_issue_4_1() {
+    let path = "./tests/issue_4_1.aseprite";
+    let file = std::fs::read(path).unwrap();
+    let file = AsepriteFile::load(&file).unwrap();
+    let (width, height) = file.size();
+    let mut buf = vec![0; usize::from(width * height) * 4];
+    for idx in 0..file.frames().len() {
+        let _ = file.combined_frame_image(idx, &mut buf).unwrap();
+    }
+}
+
+#[test]
+fn test_issue_4_2() {
+    let path = "./tests/issue_4_2.aseprite";
     let file = std::fs::read(path).unwrap();
     let file = AsepriteFile::load(&file).unwrap();
     let (width, height) = file.size();
