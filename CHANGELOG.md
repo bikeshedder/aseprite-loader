@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update `itertools` to `0.14`
+- Update `strum` to `0.26`
+- Update `thiserror` to `2`
+
 ## [0.3.4] - 2025-02-21
 
 ### Fixed
