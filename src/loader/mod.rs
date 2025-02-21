@@ -287,7 +287,7 @@ impl AsepriteFile<'_> {
                 grayscale_to_rgba(image.data, target)?;
             }
             (ColorDepth::Grayscale, true) => {
-                let mut buf = vec![0u8; (image.width * image.height * 2).into()];
+                let mut buf = vec![0u8; usize::from(image.width) * usize::from(image.height) * 2];
                 decompress(image.data, &mut buf)?;
                 grayscale_to_rgba(&buf, target)?;
             }
@@ -302,7 +302,7 @@ impl AsepriteFile<'_> {
                 )?;
             }
             (ColorDepth::Indexed, true) => {
-                let mut buf = vec![0u8; (image.width * image.height).into()];
+                let mut buf = vec![0u8; usize::from(image.width) * usize::from(image.height)];
                 decompress(image.data, &mut buf)?;
                 indexed_to_rgba(
                     &buf,
