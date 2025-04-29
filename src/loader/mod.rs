@@ -82,6 +82,7 @@ pub struct Layer {
     pub opacity: u8,
     pub blend_mode: BlendMode,
     pub visible: bool,
+    pub layer_type: LayerType,
 }
 
 impl AsepriteFile<'_> {
@@ -94,12 +95,13 @@ impl AsepriteFile<'_> {
             .layers
             .iter()
             .filter_map(|layer| {
-                if layer.layer_type == LayerType::Normal {
+                if layer.layer_type == LayerType::Normal || layer.layer_type == LayerType::Group {
                     Some(Layer {
                         name: layer.name.to_string(),
                         opacity: layer.opacity,
                         blend_mode: layer.blend_mode,
                         visible: layer.flags.contains(LayerFlags::VISIBLE),
+                        layer_type: layer.layer_type,
                     })
                 } else {
                     None
@@ -225,7 +227,7 @@ impl AsepriteFile<'_> {
                 Some(l) => l,
                 None => continue,
             };
-            if !layer.visible {
+            if !layer.visible || layer.layer_type == LayerType::Group {
                 continue;
             }
 
