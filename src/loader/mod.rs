@@ -221,7 +221,10 @@ impl AsepriteFile<'_> {
         let frame = &self.frames[frame_index];
 
         for cel in frame.cels.iter() {
-            let layer = &self.layers[cel.layer_index];
+            let layer = match self.layers.get(cel.layer_index) {
+                Some(l) => l,
+                None => continue,
+            };
             if !layer.visible {
                 continue;
             }
