@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added
+
+- Add support for layer groups
+
 ### Changed
 
 - Update `itertools` to version `0.14`
 - Update `strum` to version `0.26`
 - Update `thiserror` to version `2`
 - Update `nom` to version `8`
+
+### Fixed
+
+- Skip invalid layers
 
 ## [0.3.4] - 2025-02-21
 
