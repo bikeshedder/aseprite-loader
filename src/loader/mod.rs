@@ -223,9 +223,8 @@ impl AsepriteFile<'_> {
         let frame = &self.frames[frame_index];
 
         for cel in frame.cels.iter() {
-            let layer = match self.layers.get(cel.layer_index) {
-                Some(l) => l,
-                None => continue,
+            let Some(layer) = self.layers.get(cel.layer_index) else {
+                continue;
             };
             if !layer.visible || layer.layer_type == LayerType::Group {
                 continue;
