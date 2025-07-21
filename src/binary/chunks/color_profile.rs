@@ -2,6 +2,7 @@ use bitflags::bitflags;
 use nom::{
     bytes::complete::take,
     combinator::{flat_map, map},
+    Parser,
 };
 use strum::FromRepr;
 
@@ -50,7 +51,7 @@ pub fn parse_color_profile(input: &[u8]) -> ParseResult<'_, ColorProfileChunk<'_
         ColorProfileType::NoColorProfile => (input, ColorProfile::NoColorProfile),
         ColorProfileType::Srgb => (input, ColorProfile::Srgb),
         ColorProfileType::EmbeddedICC => {
-            map(flat_map(dword, take), ColorProfile::EmbeddedICC)(input)?
+            map(flat_map(dword, take), ColorProfile::EmbeddedICC).parse(input)?
         }
         ColorProfileType::Unknown(word) => (input, ColorProfile::Unknown(word)),
     };

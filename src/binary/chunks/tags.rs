@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use nom::{bytes::complete::take, multi::count};
+use nom::{bytes::complete::take, multi::count, Parser};
 use strum::FromRepr;
 
 use crate::binary::{
@@ -42,7 +42,7 @@ impl From<Byte> for AnimationDirection {
 pub fn parse_tags_chunk(input: &[u8]) -> ParseResult<'_, TagsChunk<'_>> {
     let (input, number_of_tags) = word(input)?;
     let (input, _) = take(8usize)(input)?;
-    let (input, tags) = count(parse_tag, number_of_tags.into())(input)?;
+    let (input, tags) = count(parse_tag, number_of_tags.into()).parse(input)?;
     Ok((input, TagsChunk { tags }))
 }
 

@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use bitflags::bitflags;
-use nom::{bytes::complete::take, combinator::cond, multi::count};
+use nom::{bytes::complete::take, combinator::cond, multi::count, Parser};
 
 use crate::binary::{
     errors::{ParseError, ParseResult},
@@ -45,7 +45,7 @@ pub fn parse_palette_chunk(input: &[u8]) -> ParseResult<'_, PaletteChunk<'_>> {
         )));
     }
     let (input, _) = take(8usize)(input)?;
-    let (input, entries) = count(parse_palette_entry, palette_size)(input)?;
+    let (input, entries) = count(parse_palette_entry, palette_size).parse(input)?;
     Ok((
         input,
         PaletteChunk {
@@ -59,6 +59,7 @@ pub fn parse_palette_entry(input: &[u8]) -> ParseResult<'_, PaletteEntry<'_>> {
     let (input, flags) = word(input)?;
     let flags = PaletteEntryFlags::from_bits_truncate(flags);
     let (input, color) = parse_color(input)?;
-    let (input, name) = cond(flags.contains(PaletteEntryFlags::HAS_NAME), parse_string)(input)?;
+    let (input, name) =
+        cond(flags.contains(PaletteEntryFlags::HAS_NAME), parse_string).parse(input)?;
     Ok((input, PaletteEntry { color, name }))
 }

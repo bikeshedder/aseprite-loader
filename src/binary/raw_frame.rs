@@ -2,6 +2,7 @@ use nom::{
     bytes::complete::{tag, take},
     combinator::{all_consuming, complete},
     multi::many1,
+    Parser,
 };
 
 use super::{
@@ -35,14 +36,14 @@ impl<'a> RawFrame<'a> {
 const FRAME_MAGIC_NUMBER: [u8; 2] = 0xF1FAu16.to_le_bytes();
 
 pub fn parse_frames(input: &[u8]) -> ParseResult<'_, Vec<RawFrame<'_>>> {
-    complete(all_consuming(many1(parse_rawframe)))(input)
+    complete(all_consuming(many1(parse_rawframe))).parse(input)
 }
 
 pub fn parse_rawframe(input: &[u8]) -> ParseResult<'_, RawFrame<'_>> {
     let (input, size) = dword_size(input, ParseError::InvalidFrameSize)?;
     // FIXME handle underflows
     let (rest, input) = take(size - 4)(input)?;
-    let (input, _) = tag(FRAME_MAGIC_NUMBER)(input)?;
+    let (input, _) = tag(FRAME_MAGIC_NUMBER.as_slice()).parse(input)?;
     let (input, chunk_count) = word(input)?;
     let (input, duration) = word(input)?;
     let (input, _) = take(2usize)(input)?;

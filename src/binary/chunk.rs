@@ -1,4 +1,4 @@
-use nom::{bytes::complete::take, multi::count};
+use nom::{bytes::complete::take, multi::count, Parser};
 
 use super::{
     chunk_type::{parse_chunk_type, ChunkType},
@@ -40,7 +40,7 @@ pub enum Chunk<'a> {
 }
 
 pub fn parse_chunks(input: &[u8], chunk_count: usize) -> ParseResult<'_, Vec<Chunk<'_>>> {
-    count(parse_chunk, chunk_count)(input)
+    count(parse_chunk, chunk_count).parse(input)
 }
 
 pub fn parse_chunk(input: &[u8]) -> ParseResult<'_, Chunk<'_>> {

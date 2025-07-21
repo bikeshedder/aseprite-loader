@@ -1,4 +1,7 @@
-use nom::bytes::complete::{tag, take};
+use nom::{
+    bytes::complete::{tag, take},
+    Parser,
+};
 
 use super::{
     color_depth::{parse_color_depth, ColorDepth},
@@ -53,15 +56,15 @@ pub struct Header {
 pub fn parse_header(input: &[u8]) -> ParseResult<'_, Header> {
     let (rest, input) = take(128usize)(input)?;
     let (input, file_size) = dword(input)?;
-    let (input, _) = tag(HEADER_MAGIC_NUMBER)(input)?;
+    let (input, _) = tag(HEADER_MAGIC_NUMBER.as_slice()).parse(input)?;
     let (input, frames) = word(input)?;
     let (input, width) = word(input)?;
     let (input, height) = word(input)?;
     let (input, color_depth) = parse_color_depth(input)?;
     let (input, flags) = dword(input)?;
     let (input, speed) = word(input)?;
-    let (input, _) = tag([0u8; 4])(input)?;
-    let (input, _) = tag([0u8; 4])(input)?;
+    let (input, _) = tag([0u8; 4].as_slice()).parse(input)?;
+    let (input, _) = tag([0u8; 4].as_slice()).parse(input)?;
     let (input, transparent_index) = byte(input)?;
     let (input, _) = take(3usize)(input)?;
     let (input, color_count) = word(input)?;

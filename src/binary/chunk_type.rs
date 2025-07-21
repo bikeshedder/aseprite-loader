@@ -1,4 +1,4 @@
-use nom::combinator::map;
+use nom::{combinator::map, Parser};
 use strum::FromRepr;
 
 use super::{errors::ParseResult, scalars::word};
@@ -22,5 +22,5 @@ pub enum ChunkType {
 }
 
 pub fn parse_chunk_type(input: &[u8]) -> ParseResult<'_, Result<ChunkType, u16>> {
-    map(word, |n| ChunkType::from_repr(n.into()).ok_or(n))(input)
+    map(word, |n| ChunkType::from_repr(n.into()).ok_or(n)).parse(input)
 }

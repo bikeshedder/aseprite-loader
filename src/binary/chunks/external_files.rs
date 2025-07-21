@@ -1,4 +1,4 @@
-use nom::{bytes::complete::take, multi::count};
+use nom::{bytes::complete::take, multi::count, Parser};
 use strum::FromRepr;
 
 use crate::binary::{
@@ -41,7 +41,7 @@ impl From<Byte> for ExternalFileType {
 pub fn parse_external_files_chunk(input: &[u8]) -> ParseResult<'_, ExternalFilesChunk<'_>> {
     let (input, number_of_entries) = parse_dword_as_usize(input)?;
     let (input, _) = take(8usize)(input)?;
-    let (input, files) = count(parse_external_file, number_of_entries)(input)?;
+    let (input, files) = count(parse_external_file, number_of_entries).parse(input)?;
     Ok((input, ExternalFilesChunk { files }))
 }
 

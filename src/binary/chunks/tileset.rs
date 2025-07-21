@@ -2,6 +2,7 @@ use bitflags::bitflags;
 use nom::{
     bytes::complete::take,
     combinator::{cond, flat_map},
+    Parser,
 };
 
 use crate::binary::{
@@ -88,8 +89,9 @@ pub fn parse_tileset_chunk(input: &[u8]) -> ParseResult<'_, TilesetChunk<'_>> {
     let (input, external_file) = cond(
         flags.contains(TilesetFlags::EXTERNAL_FILE),
         parse_external_file,
-    )(input)?;
-    let (input, tiles) = cond(flags.contains(TilesetFlags::TILES), parse_tiles)(input)?;
+    )
+    .parse(input)?;
+    let (input, tiles) = cond(flags.contains(TilesetFlags::TILES), parse_tiles).parse(input)?;
     Ok((
         input,
         TilesetChunk {
@@ -121,5 +123,5 @@ pub fn parse_external_file(input: &[u8]) -> ParseResult<'_, TilesetExternalFile>
 use nom::combinator::map;
 
 pub fn parse_tiles(input: &[u8]) -> ParseResult<'_, TilesetTiles<'_>> {
-    map(flat_map(dword, take), |data| TilesetTiles { data })(input)
+    map(flat_map(dword, take), |data| TilesetTiles { data }).parse(input)
 }

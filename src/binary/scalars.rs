@@ -10,6 +10,7 @@ use nom::{
     bytes::complete::take,
     combinator::{flat_map, map_res},
     number::complete::{le_i16, le_i32, le_u128, le_u16, le_u32, le_u8},
+    Parser,
 };
 
 use super::errors::{ParseError, ParseResult};
@@ -132,7 +133,7 @@ pub fn parse_dword_as_u8<'a>(input: &'a [u8], e: ParseError<'a>) -> ParseResult<
 }
 
 pub fn parse_string(input: &[u8]) -> ParseResult<'_, &str> {
-    map_res(flat_map(word, take), std::str::from_utf8)(input)
+    map_res(flat_map(word, take), std::str::from_utf8).parse(input)
 }
 
 pub fn parse_uuid(input: &[u8]) -> ParseResult<'_, Uuid> {

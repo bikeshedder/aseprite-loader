@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update `itertools` to `0.14`
-- Update `strum` to `0.26`
-- Update `thiserror` to `2`
+- Update `itertools` to version `0.14`
+- Update `strum` to version `0.26`
+- Update `thiserror` to version `2`
+- Update `nom` to version `8`
 
 ## [0.3.4] - 2025-02-21
 
@@ -52,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change `CelType::Unknown` to include the `cel_type`
 - Make `Fixed` fields public
 - Replace `Range` by `InclusiveRange` to avoid overflow errors
-- Update `itertools` to `0.13`
+- Update `itertools` to version `0.13`
 
 ## [0.2.0] - 2024-04-20
 

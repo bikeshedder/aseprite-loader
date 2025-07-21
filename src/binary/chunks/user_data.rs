@@ -6,6 +6,7 @@ use nom::{
     number::complete::{
         le_f32, le_f64, le_i16, le_i32, le_i64, le_i8, le_u16, le_u32, le_u64, le_u8,
     },
+    Parser,
 };
 use strum::FromRepr;
 
@@ -120,12 +121,14 @@ pub enum Vector<'a> {
 pub fn parse_user_data_chunk(input: &[u8]) -> ParseResult<'_, UserDataChunk<'_>> {
     let (input, flags) = dword(input)?;
     let flags = UserDataFlags::from_bits_truncate(flags);
-    let (input, text) = cond(flags.contains(UserDataFlags::HAS_TEXT), parse_string)(input)?;
-    let (input, color) = cond(flags.contains(UserDataFlags::HAS_COLOR), parse_color)(input)?;
+    let (input, text) = cond(flags.contains(UserDataFlags::HAS_TEXT), parse_string).parse(input)?;
+    let (input, color) =
+        cond(flags.contains(UserDataFlags::HAS_COLOR), parse_color).parse(input)?;
     let (input, properties_maps) = cond(
         flags.contains(UserDataFlags::HAS_PROPERTIES),
         parse_properties_maps,
-    )(input)?;
+    )
+    .parse(input)?;
     Ok((
         input,
         (UserDataChunk {
@@ -143,13 +146,16 @@ pub fn parse_properties_maps(
     let (input, num_maps) = parse_dword_as_usize(input)?;
     // FIXME handle underflows
     let (input, input_maps) = take(size_maps - 4)(input)?;
-    Ok((input, count(parse_properties_map, num_maps)(input_maps)))
+    Ok((
+        input,
+        count(parse_properties_map, num_maps).parse(input_maps),
+    ))
 }
 
 pub fn parse_properties_map(input: &[u8]) -> ParseResult<'_, PropertiesMap<'_>> {
     let (input, extension_entry_id) = dword(input)?;
     let (input, num_props) = parse_dword_as_usize(input)?;
-    let (input, properties) = count(parse_property, num_props)(input)?;
+    let (input, properties) = count(parse_property, num_props).parse(input)?;
     Ok((
         input,
         PropertiesMap {
@@ -171,25 +177,27 @@ pub fn parse_value(input: &[u8]) -> ParseResult<'_, Value<'_>> {
         ParseError::InvalidPropertyType(prop_type),
     ))?;
     Ok(match prop_type {
-        PropertyType::Bool => map(byte, |b| Value::Bool(b != 0))(input)?,
-        PropertyType::Int8 => map(le_i8, Value::Int8)(input)?,
-        PropertyType::Uint8 => map(le_u8, Value::Uint8)(input)?,
-        PropertyType::Int16 => map(le_i16, Value::Int16)(input)?,
-        PropertyType::Uint16 => map(le_u16, Value::Uint16)(input)?,
-        PropertyType::Int32 => map(le_i32, Value::Int32)(input)?,
-        PropertyType::Uint32 => map(le_u32, Value::Uint32)(input)?,
-        PropertyType::Int64 => map(le_i64, Value::Int64)(input)?,
-        PropertyType::Uint64 => map(le_u64, Value::Uint64)(input)?,
-        PropertyType::Fixed => map(fixed, Value::Fixed)(input)?,
-        PropertyType::Float => map(le_f32, Value::Float)(input)?,
-        PropertyType::Double => map(le_f64, Value::Double)(input)?,
-        PropertyType::String => map(parse_string, Value::String)(input)?,
-        PropertyType::Point => map(parse_point, Value::Point)(input)?,
-        PropertyType::Size => map(parse_size, Value::Size)(input)?,
-        PropertyType::Rect => map(parse_rect, Value::Rect)(input)?,
-        PropertyType::Vector => map(parse_vector, Value::Vector)(input)?,
-        PropertyType::PropertiesMap => map(parse_properties_map, Value::PropertiesMap)(input)?,
-        PropertyType::Uuid => map(parse_uuid, Value::Uuid)(input)?,
+        PropertyType::Bool => map(byte, |b| Value::Bool(b != 0)).parse(input)?,
+        PropertyType::Int8 => map(le_i8, Value::Int8).parse(input)?,
+        PropertyType::Uint8 => map(le_u8, Value::Uint8).parse(input)?,
+        PropertyType::Int16 => map(le_i16, Value::Int16).parse(input)?,
+        PropertyType::Uint16 => map(le_u16, Value::Uint16).parse(input)?,
+        PropertyType::Int32 => map(le_i32, Value::Int32).parse(input)?,
+        PropertyType::Uint32 => map(le_u32, Value::Uint32).parse(input)?,
+        PropertyType::Int64 => map(le_i64, Value::Int64).parse(input)?,
+        PropertyType::Uint64 => map(le_u64, Value::Uint64).parse(input)?,
+        PropertyType::Fixed => map(fixed, Value::Fixed).parse(input)?,
+        PropertyType::Float => map(le_f32, Value::Float).parse(input)?,
+        PropertyType::Double => map(le_f64, Value::Double).parse(input)?,
+        PropertyType::String => map(parse_string, Value::String).parse(input)?,
+        PropertyType::Point => map(parse_point, Value::Point).parse(input)?,
+        PropertyType::Size => map(parse_size, Value::Size).parse(input)?,
+        PropertyType::Rect => map(parse_rect, Value::Rect).parse(input)?,
+        PropertyType::Vector => map(parse_vector, Value::Vector).parse(input)?,
+        PropertyType::PropertiesMap => {
+            map(parse_properties_map, Value::PropertiesMap).parse(input)?
+        }
+        PropertyType::Uuid => map(parse_uuid, Value::Uuid).parse(input)?,
     })
 }
 
@@ -197,34 +205,41 @@ pub fn parse_vector(input: &[u8]) -> ParseResult<'_, Vector<'_>> {
     let (input, len_elements) = parse_dword_as_usize(input)?;
     let (input, prop_type) = word(input)?;
     if prop_type == 0 {
-        return map(count(parse_value, len_elements), Vector::Mixed)(input);
+        return map(count(parse_value, len_elements), Vector::Mixed).parse(input);
     }
     let prop_type = PropertyType::from_repr(prop_type).ok_or(nom::Err::Failure(
         ParseError::InvalidPropertyType(prop_type),
     ))?;
     let (input, vec) = match prop_type {
-        PropertyType::Bool => map(count(map(byte, |b| b != 0), len_elements), Vector::Bool)(input)?,
-        PropertyType::Int8 => map(count(le_i8, len_elements), Vector::Int8)(input)?,
-        PropertyType::Uint8 => map(count(le_u8, len_elements), Vector::Uint8)(input)?,
-        PropertyType::Int16 => map(count(le_i16, len_elements), Vector::Int16)(input)?,
-        PropertyType::Uint16 => map(count(le_u16, len_elements), Vector::Uint16)(input)?,
-        PropertyType::Int32 => map(count(le_i32, len_elements), Vector::Int32)(input)?,
-        PropertyType::Uint32 => map(count(le_u32, len_elements), Vector::Uint32)(input)?,
-        PropertyType::Int64 => map(count(le_i64, len_elements), Vector::Int64)(input)?,
-        PropertyType::Uint64 => map(count(le_u64, len_elements), Vector::Uint64)(input)?,
-        PropertyType::Fixed => map(count(fixed, len_elements), Vector::Fixed)(input)?,
-        PropertyType::Float => map(count(le_f32, len_elements), Vector::Float)(input)?,
-        PropertyType::Double => map(count(le_f64, len_elements), Vector::Double)(input)?,
-        PropertyType::String => map(count(parse_string, len_elements), Vector::String)(input)?,
-        PropertyType::Point => map(count(parse_point, len_elements), Vector::Point)(input)?,
-        PropertyType::Size => map(count(parse_size, len_elements), Vector::Size)(input)?,
-        PropertyType::Rect => map(count(parse_rect, len_elements), Vector::Rect)(input)?,
-        PropertyType::Vector => map(count(parse_vector, len_elements), Vector::Vector)(input)?,
+        PropertyType::Bool => {
+            map(count(map(byte, |b| b != 0), len_elements), Vector::Bool).parse(input)?
+        }
+        PropertyType::Int8 => map(count(le_i8, len_elements), Vector::Int8).parse(input)?,
+        PropertyType::Uint8 => map(count(le_u8, len_elements), Vector::Uint8).parse(input)?,
+        PropertyType::Int16 => map(count(le_i16, len_elements), Vector::Int16).parse(input)?,
+        PropertyType::Uint16 => map(count(le_u16, len_elements), Vector::Uint16).parse(input)?,
+        PropertyType::Int32 => map(count(le_i32, len_elements), Vector::Int32).parse(input)?,
+        PropertyType::Uint32 => map(count(le_u32, len_elements), Vector::Uint32).parse(input)?,
+        PropertyType::Int64 => map(count(le_i64, len_elements), Vector::Int64).parse(input)?,
+        PropertyType::Uint64 => map(count(le_u64, len_elements), Vector::Uint64).parse(input)?,
+        PropertyType::Fixed => map(count(fixed, len_elements), Vector::Fixed).parse(input)?,
+        PropertyType::Float => map(count(le_f32, len_elements), Vector::Float).parse(input)?,
+        PropertyType::Double => map(count(le_f64, len_elements), Vector::Double).parse(input)?,
+        PropertyType::String => {
+            map(count(parse_string, len_elements), Vector::String).parse(input)?
+        }
+        PropertyType::Point => map(count(parse_point, len_elements), Vector::Point).parse(input)?,
+        PropertyType::Size => map(count(parse_size, len_elements), Vector::Size).parse(input)?,
+        PropertyType::Rect => map(count(parse_rect, len_elements), Vector::Rect).parse(input)?,
+        PropertyType::Vector => {
+            map(count(parse_vector, len_elements), Vector::Vector).parse(input)?
+        }
         PropertyType::PropertiesMap => map(
             count(parse_properties_map, len_elements),
             Vector::PropertiesMap,
-        )(input)?,
-        PropertyType::Uuid => map(count(parse_uuid, len_elements), Vector::Uuid)(input)?,
+        )
+        .parse(input)?,
+        PropertyType::Uuid => map(count(parse_uuid, len_elements), Vector::Uuid).parse(input)?,
     };
     Ok((input, vec))
 }

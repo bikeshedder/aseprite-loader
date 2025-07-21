@@ -1,4 +1,4 @@
-use nom::multi::count;
+use nom::{multi::count, Parser};
 
 use crate::binary::{
     errors::ParseResult,
@@ -26,7 +26,7 @@ pub struct Packet {
 
 pub fn parse_old_palette_chunk(input: &[u8]) -> ParseResult<'_, OldPaletteChunk> {
     let (input, number_of_packets) = word(input)?;
-    let (input, packets) = count(parse_packet, number_of_packets.into())(input)?;
+    let (input, packets) = count(parse_packet, number_of_packets.into()).parse(input)?;
     Ok((input, OldPaletteChunk { packets }))
 }
 
@@ -38,7 +38,7 @@ pub fn parse_packet(input: &[u8]) -> ParseResult<'_, Packet> {
     } else {
         number_of_colors.into()
     };
-    let (input, colors) = count(parse_rgb, number_of_colors)(input)?;
+    let (input, colors) = count(parse_rgb, number_of_colors).parse(input)?;
     Ok((
         input,
         Packet {

@@ -1,5 +1,5 @@
 use bitflags::bitflags;
-use nom::{combinator::cond, multi::count};
+use nom::{combinator::cond, multi::count, Parser};
 
 use crate::binary::{
     errors::ParseResult,
@@ -52,7 +52,8 @@ pub fn parse_slice_chunk(input: &[u8]) -> ParseResult<'_, SliceChunk<'_>> {
     let flags = SliceFlags::from_bits_truncate(flags);
     let (input, _) = dword(input)?;
     let (input, name) = parse_string(input)?;
-    let (input, slice_keys) = count(|input| parse_slice_key(input, flags), number_of_keys)(input)?;
+    let (input, slice_keys) =
+        count(|input| parse_slice_key(input, flags), number_of_keys).parse(input)?;
     Ok((
         input,
         SliceChunk {
@@ -70,8 +71,8 @@ pub fn parse_slice_key(input: &[u8], flags: SliceFlags) -> ParseResult<'_, Slice
     let (input, width) = dword(input)?;
     let (input, height) = dword(input)?;
     let (input, nine_patch) =
-        cond(flags.contains(SliceFlags::NINE_PATCH), parse_nine_patch)(input)?;
-    let (input, pivot) = cond(flags.contains(SliceFlags::PIVOT), parse_pivot)(input)?;
+        cond(flags.contains(SliceFlags::NINE_PATCH), parse_nine_patch).parse(input)?;
+    let (input, pivot) = cond(flags.contains(SliceFlags::PIVOT), parse_pivot).parse(input)?;
     Ok((
         input,
         SliceKey {
