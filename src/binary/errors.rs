@@ -36,7 +36,7 @@ pub enum ParseError<'a> {
     Nom(nom::error::Error<&'a [u8]>),
 }
 
-impl<'a> std::error::Error for ParseError<'a> {}
+impl std::error::Error for ParseError<'_> {}
 
 impl<'a> nom::error::ParseError<&'a [u8]> for ParseError<'a> {
     fn from_error_kind(input: &'a [u8], kind: nom::error::ErrorKind) -> Self {
