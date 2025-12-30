@@ -2,6 +2,7 @@ use bitflags::bitflags;
 use nom::{combinator::cond, multi::count, Parser};
 
 use crate::binary::{
+    chunks::user_data::UserDataChunk,
     errors::ParseResult,
     scalars::{dword, long, parse_dword_as_usize, parse_string, Dword, Long},
 };
@@ -11,6 +12,8 @@ pub struct SliceChunk<'a> {
     pub name: &'a str,
     pub flags: SliceFlags,
     pub slice_keys: Vec<SliceKey>,
+    /// An optional user data chunk following this cel chunk.
+    pub user_data: Option<UserDataChunk<'a>>,
 }
 
 bitflags! {
@@ -60,6 +63,7 @@ pub fn parse_slice_chunk(input: &[u8]) -> ParseResult<'_, SliceChunk<'_>> {
             name,
             flags,
             slice_keys,
+            user_data: None,
         },
     ))
 }
