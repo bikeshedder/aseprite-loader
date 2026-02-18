@@ -204,12 +204,36 @@ impl AsepriteFile<'_> {
     }
 
     /// Get image loader for a given frame index
-    /// This will combine all layers into a single image
+    /// This will combine all visible layers into a single image
     /// returns a hash describing the image, since cels can be reused in multiple frames
     pub fn combined_frame_image(
         &self,
         frame_index: usize,
         target: &mut [u8],
+    ) -> Result<u64, LoadImageError> {
+        self.blend_frame_cels(frame_index, target, |layer| !layer.visible)
+    }
+
+    /// Like [`combined_frame_image`](Self::combined_frame_image), but only
+    /// includes the layers whose names appear in `visible_layers`.
+    pub fn combined_layered_frame_image(
+        &self,
+        frame_index: usize,
+        target: &mut [u8],
+        visible_layers: &[String],
+    ) -> Result<u64, LoadImageError> {
+        self.blend_frame_cels(frame_index, target, |layer| {
+            !visible_layers.contains(&layer.name)
+        })
+    }
+
+    /// Shared implementation: blend every cel in `frame_index` into `target`,
+    /// skipping cels where `skip_layer` returns `true`.
+    fn blend_frame_cels(
+        &self,
+        frame_index: usize,
+        target: &mut [u8],
+        skip_layer: impl Fn(&Layer) -> bool,
     ) -> Result<u64, LoadImageError> {
         let mut hasher = DefaultHasher::new();
 
@@ -226,7 +250,7 @@ impl AsepriteFile<'_> {
             let Some(layer) = self.layers.get(cel.layer_index) else {
                 continue;
             };
-            if !layer.visible || layer.layer_type == LayerType::Group {
+            if skip_layer(layer) || layer.layer_type == LayerType::Group {
                 continue;
             }
 
@@ -440,6 +464,42 @@ fn test_combine() {
         let path = tmp.path().join(format!("combined_{}.png", index));
         image.save(path).unwrap();
     }
+}
+
+#[test]
+fn test_visible_layers_empty_produces_blank() {
+    let data = std::fs::read("./tests/layers.aseprite").unwrap();
+    let file = AsepriteFile::load(&data).unwrap();
+    let (width, height) = file.size();
+    let mut buf = vec![0u8; usize::from(width) * usize::from(height) * 4];
+    let _ = file.combined_layered_frame_image(0, &mut buf, &[]).unwrap();
+    assert!(buf.iter().all(|&b| b == 0), "empty layer list should produce a blank image");
+}
+
+#[test]
+fn test_visible_layers_single_differs_from_all() {
+    let data = std::fs::read("./tests/layers.aseprite").unwrap();
+    let file = AsepriteFile::load(&data).unwrap();
+
+    let visible_normal: Vec<String> = file
+        .layers()
+        .iter()
+        .filter(|l| l.visible && l.layer_type != LayerType::Group)
+        .map(|l| l.name.clone())
+        .collect();
+
+    assert!(visible_normal.len() >= 2, "layers.aseprite needs at least 2 visible layers for this test");
+
+    let (width, height) = file.size();
+    let buf_size = usize::from(width) * usize::from(height) * 4;
+
+    let mut buf_all = vec![0u8; buf_size];
+    let _ = file.combined_frame_image(0, &mut buf_all).unwrap();
+
+    let mut buf_one = vec![0u8; buf_size];
+    let _ = file.combined_layered_frame_image(0, &mut buf_one, &visible_normal[..1]).unwrap();
+
+    assert_ne!(buf_all, buf_one, "single layer composite should differ from all-layers composite");
 }
 
 /// https://github.com/bikeshedder/aseprite-loader/issues/4
