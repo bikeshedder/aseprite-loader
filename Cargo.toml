@@ -1,6 +1,6 @@
 [package]
 name = "aseprite-loader"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 resolver = "2"
 authors = ["Michael P. Jung <michael.jung@terreon.de>"]

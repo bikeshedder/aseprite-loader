@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-02-19
+
 - Add `AsepriteFile::render_frame` method which supports overriding thei
   layer visibility via a `LayerSelection`.
 - Deprecate `AsepriteFile::combined_frame_image` in favor of
