@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add `AsepriteFile::render_frame` method which supports overriding thei
+  layer visibility via a `LayerSelection`.
+- Deprecate `AsepriteFile::combined_frame_image` in favor of
+  `AsepriteFile::render_frame`
+
 ## [0.4.1] - 2026-02-19
 
 - Fix size bug when parsing properties maps

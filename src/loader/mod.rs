@@ -89,13 +89,22 @@ pub struct Layer {
 ///
 /// Created via [`AsepriteFile::select_layers`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LayerSelection {
-    visible: Vec<bool>,
+pub enum LayerSelection {
+    /// Render visible layers as defined in the aseprite file.
+    Visible,
+    /// Render all layers regardles of their visibility in the aseprite file.
+    All,
+    /// Render layers using a mask.
+    Mask(Vec<bool>),
 }
 
 impl LayerSelection {
-    fn is_visible(&self, layer_index: usize) -> bool {
-        self.visible.get(layer_index).copied().unwrap_or(false)
+    fn is_selected(&self, layer_index: usize, layer: &Layer) -> bool {
+        match self {
+            Self::Visible => layer.visible,
+            Self::All => true,
+            Self::Mask(mask) => mask.get(layer_index).copied().unwrap_or(false),
+        }
     }
 }
 
@@ -218,44 +227,49 @@ impl AsepriteFile<'_> {
     }
 
     /// Convert layer names into a [`LayerSelection`] for use with
-    /// [`combined_frame_image`](Self::combined_frame_image).
+    /// [`render_frame`](Self::render_frame).
+    ///
+    /// The premise is used to select the layers which should be included.
+    pub fn select_layers(&self, predicate: impl Fn(&Layer) -> bool) -> LayerSelection {
+        LayerSelection::Mask(self.layers.iter().map(predicate).collect())
+    }
+
+    /// Convert layer names into a [`LayerSelection`] for use with
+    /// [`render_frame`](Self::render_frame).
     ///
     /// The returned selection marks a layer as visible if its name appears
     /// in `names`. Call this once and reuse the result across frames.
-    pub fn select_layers(&self, names: &[&str]) -> LayerSelection {
-        LayerSelection {
-            visible: self.layers.iter().map(|l| names.contains(&l.name.as_str())).collect(),
-        }
+    pub fn select_layers_by_name(&self, names: &[&str]) -> LayerSelection {
+        self.select_layers(|l| names.contains(&l.name.as_str()))
     }
 
-    /// Get image loader for a given frame index.
-    /// This will combine all visible layers into a single image.
-    /// Returns a hash describing the image, since cels can be reused in multiple frames.
+    /// Render a frame for a given frame index. This combines all visible
+    /// layers into a buffer.
     ///
-    /// When `visible_layers` is `None`, the file-defined layer visibility is used.
-    /// When `Some`, only layers selected in the [`LayerSelection`] are included.
+    /// Returns a hash describing the image, since cels can be reused in multiple frames.
+    #[deprecated(note = "Use `render_frame` instead.")]
     pub fn combined_frame_image(
         &self,
         frame_index: usize,
         target: &mut [u8],
-        visible_layers: Option<&LayerSelection>,
     ) -> Result<u64, LoadImageError> {
-        self.blend_frame_cels(frame_index, target, |layer_index, layer| match visible_layers {
-            None => !layer.visible,
-            Some(sel) => !sel.is_visible(layer_index),
-        })
+        self.render_frame(frame_index, target, &LayerSelection::Visible)?;
+        let mut hasher = DefaultHasher::new();
+        let frame = &self.frames[frame_index];
+        for cel in frame.cels.iter() {
+            (cel.image_index, cel.layer_index, cel.origin, cel.size).hash(&mut hasher);
+        }
+        Ok(hasher.finish())
     }
 
-    /// Shared implementation: blend every cel in `frame_index` into `target`,
-    /// skipping cels where `skip_layer` returns `true`.
-    fn blend_frame_cels(
+    /// Render a frame for a given frame index. This combines layers depending
+    /// on the layer selection into a buffer.
+    pub fn render_frame(
         &self,
         frame_index: usize,
         target: &mut [u8],
-        skip_layer: impl Fn(usize, &Layer) -> bool,
-    ) -> Result<u64, LoadImageError> {
-        let mut hasher = DefaultHasher::new();
-
+        layers: &LayerSelection,
+    ) -> Result<(), LoadImageError> {
         let target_size =
             usize::from(self.file.header.width) * usize::from(self.file.header.height) * 4;
 
@@ -269,15 +283,13 @@ impl AsepriteFile<'_> {
             let Some(layer) = self.layers.get(cel.layer_index) else {
                 continue;
             };
-            if skip_layer(cel.layer_index, layer) || layer.layer_type == LayerType::Group {
+            if layer.layer_type == LayerType::Group || !layers.is_selected(cel.layer_index, layer) {
                 continue;
             }
 
             let mut cel_target = vec![0; usize::from(cel.size.0) * usize::from(cel.size.1) * 4];
             self.load_image(cel.image_index, &mut cel_target).unwrap();
             let layer = &self.layers[cel.layer_index];
-
-            (cel.image_index, cel.layer_index, cel.origin, cel.size).hash(&mut hasher);
 
             let blend_fn = blend_mode_to_blend_fn(layer.blend_mode);
 
@@ -315,8 +327,7 @@ impl AsepriteFile<'_> {
                 }
             }
         }
-
-        Ok(hasher.finish())
+        Ok(())
     }
 
     /// Get image loader for a given image index
@@ -475,7 +486,8 @@ fn test_combine() {
     let (width, height) = file.size();
     for (index, _) in file.frames().iter().enumerate() {
         let mut target = vec![0; usize::from(width * height) * 4];
-        let _ = file.combined_frame_image(index, &mut target, None).unwrap();
+        file.render_frame(index, &mut target, &LayerSelection::Visible)
+            .unwrap();
         let image = RgbaImage::from_raw(u32::from(width), u32::from(height), target).unwrap();
 
         let tmp = TempDir::with_prefix("aseprite-loader").unwrap();
@@ -491,9 +503,12 @@ fn test_visible_layers_empty_produces_blank() {
     let file = AsepriteFile::load(&data).unwrap();
     let (width, height) = file.size();
     let mut buf = vec![0u8; usize::from(width) * usize::from(height) * 4];
-    let sel = file.select_layers(&[]);
-    let _ = file.combined_frame_image(0, &mut buf, Some(&sel)).unwrap();
-    assert!(buf.iter().all(|&b| b == 0), "empty layer list should produce a blank image");
+    let sel = file.select_layers_by_name(&[]);
+    file.render_frame(0, &mut buf, &sel).unwrap();
+    assert!(
+        buf.iter().all(|&b| b == 0),
+        "empty layer list should produce a blank image"
+    );
 }
 
 #[test]
@@ -508,19 +523,26 @@ fn test_visible_layers_single_differs_from_all() {
         .map(|l| l.name.as_str())
         .collect();
 
-    assert!(visible_normal.len() >= 2, "layers.aseprite needs at least 2 visible layers for this test");
+    assert!(
+        visible_normal.len() >= 2,
+        "layers.aseprite needs at least 2 visible layers for this test"
+    );
 
     let (width, height) = file.size();
     let buf_size = usize::from(width) * usize::from(height) * 4;
 
     let mut buf_all = vec![0u8; buf_size];
-    let _ = file.combined_frame_image(0, &mut buf_all, None).unwrap();
+    file.render_frame(0, &mut buf_all, &LayerSelection::Visible)
+        .unwrap();
 
-    let sel = file.select_layers(&visible_normal[..1]);
+    let sel = file.select_layers_by_name(&visible_normal[..1]);
     let mut buf_one = vec![0u8; buf_size];
-    let _ = file.combined_frame_image(0, &mut buf_one, Some(&sel)).unwrap();
+    file.render_frame(0, &mut buf_one, &sel).unwrap();
 
-    assert_ne!(buf_all, buf_one, "single layer composite should differ from all-layers composite");
+    assert_ne!(
+        buf_all, buf_one,
+        "single layer composite should differ from all-layers composite"
+    );
 }
 
 /// https://github.com/bikeshedder/aseprite-loader/issues/4
@@ -532,7 +554,8 @@ fn test_issue_4_1() {
     let (width, height) = file.size();
     let mut buf = vec![0; usize::from(width * height) * 4];
     for idx in 0..file.frames().len() {
-        let _ = file.combined_frame_image(idx, &mut buf, None).unwrap();
+        file.render_frame(idx, &mut buf, &LayerSelection::Visible)
+            .unwrap();
     }
 }
 
@@ -544,6 +567,7 @@ fn test_issue_4_2() {
     let (width, height) = file.size();
     let mut buf = vec![0; usize::from(width * height) * 4];
     for idx in 0..file.frames().len() {
-        let _ = file.combined_frame_image(idx, &mut buf, None).unwrap();
+        file.render_frame(idx, &mut buf, &LayerSelection::Visible)
+            .unwrap();
     }
 }
