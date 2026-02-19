@@ -32,6 +32,7 @@ use crate::{
 /// This can be used to load an Aseprite file.
 #[derive(Debug)]
 pub struct AsepriteFile<'a> {
+    /// Parsed low-level file representation.
     pub file: File<'a>,
     /// All layers in the file in order
     pub layers: Vec<Layer>,
@@ -48,9 +49,13 @@ pub struct AsepriteFile<'a> {
 /// This is a reference to an image cel
 #[derive(Debug, Copy, Clone)]
 pub struct FrameCel {
+    /// Cel origin in sprite coordinates.
     pub origin: (i16, i16),
+    /// Cel size in pixels `(width, height)`.
     pub size: (u16, u16),
+    /// Index into [`AsepriteFile::layers`].
     pub layer_index: usize,
+    /// Index into [`AsepriteFile::images`].
     pub image_index: usize,
 }
 
@@ -59,8 +64,11 @@ pub struct FrameCel {
 /// This is a collection of cels for each layer
 #[derive(Debug, Clone)]
 pub struct Frame {
+    /// Frame duration in milliseconds.
     pub duration: u16,
+    /// Frame origin in sprite coordinates.
     pub origin: (i16, i16),
+    /// Cels in this frame.
     pub cels: Vec<FrameCel>,
 }
 
@@ -69,19 +77,28 @@ pub struct Frame {
 /// This is a range of frames over the frames in the file, ordered by frame index
 #[derive(Debug, Clone)]
 pub struct Tag {
+    /// Tag name as defined in the Aseprite file.
     pub name: String,
+    /// Inclusive frame range covered by this tag.
     pub range: RangeInclusive<u16>,
+    /// Playback direction for this tag.
     pub direction: AnimationDirection,
+    /// Optional repeat count (`None` means infinite/unspecified).
     pub repeat: Option<u16>,
 }
 
 /// A layer in the file
 #[derive(Debug, Clone)]
 pub struct Layer {
+    /// Layer name.
     pub name: String,
+    /// Layer opacity in the range `0..=255`.
     pub opacity: u8,
+    /// Layer blend mode.
     pub blend_mode: BlendMode,
+    /// Whether the layer is visible in the source file.
     pub visible: bool,
+    /// Layer kind (normal/group/etc).
     pub layer_type: LayerType,
 }
 
@@ -92,7 +109,7 @@ pub struct Layer {
 pub enum LayerSelection {
     /// Render visible layers as defined in the aseprite file.
     Visible,
-    /// Render all layers regardles of their visibility in the aseprite file.
+    /// Render all layers regardless of their visibility in the aseprite file.
     All,
     /// Render layers using a mask.
     Mask(Vec<bool>),
@@ -264,6 +281,9 @@ impl AsepriteFile<'_> {
 
     /// Render a frame for a given frame index. This combines layers depending
     /// on the layer selection into a buffer.
+    ///
+    /// The `target` buffer must be at least `width * height * 4` bytes.
+    /// Pixels are written as RGBA8.
     pub fn render_frame(
         &self,
         frame_index: usize,
@@ -375,6 +395,7 @@ impl AsepriteFile<'_> {
         }
         Ok(())
     }
+    /// Return all slice chunks from the source file.
     pub fn slices(&self) -> &[SliceChunk<'_>] {
         &self.file.slices
     }
@@ -382,33 +403,50 @@ impl AsepriteFile<'_> {
 
 use thiserror::Error;
 
+/// Errors that can occur while building the high-level [`AsepriteFile`].
 #[derive(Error, Debug)]
 pub enum LoadSpriteError {
+    /// Parsing the binary `.aseprite` content failed.
     #[error("parsing failed {message}")]
-    Parse { message: String },
+    Parse {
+        /// Detailed parse failure description.
+        message: String,
+    },
+    /// A named tag lookup failed.
     #[error("missing tag: {0}")]
     MissingTag(String),
+    /// A named layer lookup failed.
     #[error("missing layer: {0}")]
     MissingLayer(String),
+    /// A frame index was outside available frame bounds.
     #[error("frame index out of range: {0}")]
     FrameIndexOutOfRange(usize),
 }
 
+/// Errors that can occur while decoding image pixel data.
 #[allow(missing_copy_implementations)]
 #[derive(Error, Debug)]
 pub enum LoadImageError {
+    /// The destination buffer is not large enough.
     #[error("target buffer too small")]
     TargetBufferTooSmall,
+    /// Indexed image decoding requires a palette, but none was present.
     #[error("missing palette")]
     MissingPalette,
+    /// The file uses an unsupported color depth.
     #[error("unsupported color depth")]
     UnsupportedColorDepth,
+    /// Zlib decompression failed.
     #[error("decompression failed")]
     DecompressError,
+    /// Pixel data length did not match the expected format.
     #[error("invalid image data")]
     InvalidImageData,
 }
 
+/// Decompress zlib-compressed image bytes into `target`.
+///
+/// The expected output size depends on color depth and dimensions.
 pub fn decompress(data: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {
     let mut decompressor = Decompress::new(true);
     match decompressor.decompress(data, target, flate2::FlushDecompress::Finish) {
