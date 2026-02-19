@@ -85,6 +85,20 @@ pub struct Layer {
     pub layer_type: LayerType,
 }
 
+/// Pre-computed layer visibility selection for efficient per-frame filtering.
+///
+/// Created via [`AsepriteFile::select_layers`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayerSelection {
+    visible: Vec<bool>,
+}
+
+impl LayerSelection {
+    fn is_visible(&self, layer_index: usize) -> bool {
+        self.visible.get(layer_index).copied().unwrap_or(false)
+    }
+}
+
 impl AsepriteFile<'_> {
     /// Load a aseprite file from a byte slice
     pub fn load(data: &[u8]) -> Result<AsepriteFile<'_>, LoadSpriteError> {
@@ -203,27 +217,32 @@ impl AsepriteFile<'_> {
         self.images.len()
     }
 
-    /// Get image loader for a given frame index
-    /// This will combine all visible layers into a single image
-    /// returns a hash describing the image, since cels can be reused in multiple frames
+    /// Convert layer names into a [`LayerSelection`] for use with
+    /// [`combined_frame_image`](Self::combined_frame_image).
+    ///
+    /// The returned selection marks a layer as visible if its name appears
+    /// in `names`. Call this once and reuse the result across frames.
+    pub fn select_layers(&self, names: &[&str]) -> LayerSelection {
+        LayerSelection {
+            visible: self.layers.iter().map(|l| names.contains(&l.name.as_str())).collect(),
+        }
+    }
+
+    /// Get image loader for a given frame index.
+    /// This will combine all visible layers into a single image.
+    /// Returns a hash describing the image, since cels can be reused in multiple frames.
+    ///
+    /// When `visible_layers` is `None`, the file-defined layer visibility is used.
+    /// When `Some`, only layers selected in the [`LayerSelection`] are included.
     pub fn combined_frame_image(
         &self,
         frame_index: usize,
         target: &mut [u8],
+        visible_layers: Option<&LayerSelection>,
     ) -> Result<u64, LoadImageError> {
-        self.blend_frame_cels(frame_index, target, |layer| !layer.visible)
-    }
-
-    /// Like [`combined_frame_image`](Self::combined_frame_image), but only
-    /// includes the layers whose names appear in `visible_layers`.
-    pub fn combined_layered_frame_image(
-        &self,
-        frame_index: usize,
-        target: &mut [u8],
-        visible_layers: &[String],
-    ) -> Result<u64, LoadImageError> {
-        self.blend_frame_cels(frame_index, target, |layer| {
-            !visible_layers.contains(&layer.name)
+        self.blend_frame_cels(frame_index, target, |layer_index, layer| match visible_layers {
+            None => !layer.visible,
+            Some(sel) => !sel.is_visible(layer_index),
         })
     }
 
@@ -233,7 +252,7 @@ impl AsepriteFile<'_> {
         &self,
         frame_index: usize,
         target: &mut [u8],
-        skip_layer: impl Fn(&Layer) -> bool,
+        skip_layer: impl Fn(usize, &Layer) -> bool,
     ) -> Result<u64, LoadImageError> {
         let mut hasher = DefaultHasher::new();
 
@@ -250,7 +269,7 @@ impl AsepriteFile<'_> {
             let Some(layer) = self.layers.get(cel.layer_index) else {
                 continue;
             };
-            if skip_layer(layer) || layer.layer_type == LayerType::Group {
+            if skip_layer(cel.layer_index, layer) || layer.layer_type == LayerType::Group {
                 continue;
             }
 
@@ -456,7 +475,7 @@ fn test_combine() {
     let (width, height) = file.size();
     for (index, _) in file.frames().iter().enumerate() {
         let mut target = vec![0; usize::from(width * height) * 4];
-        let _ = file.combined_frame_image(index, &mut target).unwrap();
+        let _ = file.combined_frame_image(index, &mut target, None).unwrap();
         let image = RgbaImage::from_raw(u32::from(width), u32::from(height), target).unwrap();
 
         let tmp = TempDir::with_prefix("aseprite-loader").unwrap();
@@ -472,7 +491,8 @@ fn test_visible_layers_empty_produces_blank() {
     let file = AsepriteFile::load(&data).unwrap();
     let (width, height) = file.size();
     let mut buf = vec![0u8; usize::from(width) * usize::from(height) * 4];
-    let _ = file.combined_layered_frame_image(0, &mut buf, &[]).unwrap();
+    let sel = file.select_layers(&[]);
+    let _ = file.combined_frame_image(0, &mut buf, Some(&sel)).unwrap();
     assert!(buf.iter().all(|&b| b == 0), "empty layer list should produce a blank image");
 }
 
@@ -481,11 +501,11 @@ fn test_visible_layers_single_differs_from_all() {
     let data = std::fs::read("./tests/layers.aseprite").unwrap();
     let file = AsepriteFile::load(&data).unwrap();
 
-    let visible_normal: Vec<String> = file
+    let visible_normal: Vec<&str> = file
         .layers()
         .iter()
         .filter(|l| l.visible && l.layer_type != LayerType::Group)
-        .map(|l| l.name.clone())
+        .map(|l| l.name.as_str())
         .collect();
 
     assert!(visible_normal.len() >= 2, "layers.aseprite needs at least 2 visible layers for this test");
@@ -494,10 +514,11 @@ fn test_visible_layers_single_differs_from_all() {
     let buf_size = usize::from(width) * usize::from(height) * 4;
 
     let mut buf_all = vec![0u8; buf_size];
-    let _ = file.combined_frame_image(0, &mut buf_all).unwrap();
+    let _ = file.combined_frame_image(0, &mut buf_all, None).unwrap();
 
+    let sel = file.select_layers(&visible_normal[..1]);
     let mut buf_one = vec![0u8; buf_size];
-    let _ = file.combined_layered_frame_image(0, &mut buf_one, &visible_normal[..1]).unwrap();
+    let _ = file.combined_frame_image(0, &mut buf_one, Some(&sel)).unwrap();
 
     assert_ne!(buf_all, buf_one, "single layer composite should differ from all-layers composite");
 }
@@ -511,7 +532,7 @@ fn test_issue_4_1() {
     let (width, height) = file.size();
     let mut buf = vec![0; usize::from(width * height) * 4];
     for idx in 0..file.frames().len() {
-        let _ = file.combined_frame_image(idx, &mut buf).unwrap();
+        let _ = file.combined_frame_image(idx, &mut buf, None).unwrap();
     }
 }
 
@@ -523,6 +544,6 @@ fn test_issue_4_2() {
     let (width, height) = file.size();
     let mut buf = vec![0; usize::from(width * height) * 4];
     for idx in 0..file.frames().len() {
-        let _ = file.combined_frame_image(idx, &mut buf).unwrap();
+        let _ = file.combined_frame_image(idx, &mut buf, None).unwrap();
     }
 }
