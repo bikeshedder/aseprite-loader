@@ -145,7 +145,7 @@ pub fn parse_properties_maps(
     let (input, size_maps) = parse_dword_as_usize(input)?;
     let (input, num_maps) = parse_dword_as_usize(input)?;
     // FIXME handle underflows
-    let (input, input_maps) = take(size_maps - 4)(input)?;
+    let (input, input_maps) = take(size_maps - 8)(input)?;
     Ok((
         input,
         count(parse_properties_map, num_maps).parse(input_maps),

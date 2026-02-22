@@ -32,6 +32,7 @@ use crate::{
 /// This can be used to load an Aseprite file.
 #[derive(Debug)]
 pub struct AsepriteFile<'a> {
+    /// Parsed low-level file representation.
     pub file: File<'a>,
     /// All layers in the file in order
     pub layers: Vec<Layer>,
@@ -48,9 +49,13 @@ pub struct AsepriteFile<'a> {
 /// This is a reference to an image cel
 #[derive(Debug, Copy, Clone)]
 pub struct FrameCel {
+    /// Cel origin in sprite coordinates.
     pub origin: (i16, i16),
+    /// Cel size in pixels `(width, height)`.
     pub size: (u16, u16),
+    /// Index into [`AsepriteFile::layers`].
     pub layer_index: usize,
+    /// Index into [`AsepriteFile::images`].
     pub image_index: usize,
 }
 
@@ -59,8 +64,11 @@ pub struct FrameCel {
 /// This is a collection of cels for each layer
 #[derive(Debug, Clone)]
 pub struct Frame {
+    /// Frame duration in milliseconds.
     pub duration: u16,
+    /// Frame origin in sprite coordinates.
     pub origin: (i16, i16),
+    /// Cels in this frame.
     pub cels: Vec<FrameCel>,
 }
 
@@ -69,20 +77,52 @@ pub struct Frame {
 /// This is a range of frames over the frames in the file, ordered by frame index
 #[derive(Debug, Clone)]
 pub struct Tag {
+    /// Tag name as defined in the Aseprite file.
     pub name: String,
+    /// Inclusive frame range covered by this tag.
     pub range: RangeInclusive<u16>,
+    /// Playback direction for this tag.
     pub direction: AnimationDirection,
+    /// Optional repeat count (`None` means infinite/unspecified).
     pub repeat: Option<u16>,
 }
 
 /// A layer in the file
 #[derive(Debug, Clone)]
 pub struct Layer {
+    /// Layer name.
     pub name: String,
+    /// Layer opacity in the range `0..=255`.
     pub opacity: u8,
+    /// Layer blend mode.
     pub blend_mode: BlendMode,
+    /// Whether the layer is visible in the source file.
     pub visible: bool,
+    /// Layer kind (normal/group/etc).
     pub layer_type: LayerType,
+}
+
+/// Pre-computed layer visibility selection for efficient per-frame filtering.
+///
+/// Created via [`AsepriteFile::select_layers`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LayerSelection {
+    /// Render visible layers as defined in the aseprite file.
+    Visible,
+    /// Render all layers regardless of their visibility in the aseprite file.
+    All,
+    /// Render layers using a mask.
+    Mask(Vec<bool>),
+}
+
+impl LayerSelection {
+    fn is_selected(&self, layer_index: usize, layer: &Layer) -> bool {
+        match self {
+            Self::Visible => layer.visible,
+            Self::All => true,
+            Self::Mask(mask) => mask.get(layer_index).copied().unwrap_or(false),
+        }
+    }
 }
 
 impl AsepriteFile<'_> {
@@ -203,16 +243,53 @@ impl AsepriteFile<'_> {
         self.images.len()
     }
 
-    /// Get image loader for a given frame index
-    /// This will combine all layers into a single image
-    /// returns a hash describing the image, since cels can be reused in multiple frames
+    /// Convert layer names into a [`LayerSelection`] for use with
+    /// [`render_frame`](Self::render_frame).
+    ///
+    /// The premise is used to select the layers which should be included.
+    pub fn select_layers(&self, predicate: impl Fn(&Layer) -> bool) -> LayerSelection {
+        LayerSelection::Mask(self.layers.iter().map(predicate).collect())
+    }
+
+    /// Convert layer names into a [`LayerSelection`] for use with
+    /// [`render_frame`](Self::render_frame).
+    ///
+    /// The returned selection marks a layer as visible if its name appears
+    /// in `names`. Call this once and reuse the result across frames.
+    pub fn select_layers_by_name(&self, names: &[&str]) -> LayerSelection {
+        self.select_layers(|l| names.contains(&l.name.as_str()))
+    }
+
+    /// Render a frame for a given frame index. This combines all visible
+    /// layers into a buffer.
+    ///
+    /// Returns a hash describing the image, since cels can be reused in multiple frames.
+    #[deprecated(note = "Use `render_frame` instead.")]
     pub fn combined_frame_image(
         &self,
         frame_index: usize,
         target: &mut [u8],
     ) -> Result<u64, LoadImageError> {
+        self.render_frame(frame_index, target, &LayerSelection::Visible)?;
         let mut hasher = DefaultHasher::new();
+        let frame = &self.frames[frame_index];
+        for cel in frame.cels.iter() {
+            (cel.image_index, cel.layer_index, cel.origin, cel.size).hash(&mut hasher);
+        }
+        Ok(hasher.finish())
+    }
 
+    /// Render a frame for a given frame index. This combines layers depending
+    /// on the layer selection into a buffer.
+    ///
+    /// The `target` buffer must be at least `width * height * 4` bytes.
+    /// Pixels are written as RGBA8.
+    pub fn render_frame(
+        &self,
+        frame_index: usize,
+        target: &mut [u8],
+        layers: &LayerSelection,
+    ) -> Result<(), LoadImageError> {
         let target_size =
             usize::from(self.file.header.width) * usize::from(self.file.header.height) * 4;
 
@@ -226,15 +303,13 @@ impl AsepriteFile<'_> {
             let Some(layer) = self.layers.get(cel.layer_index) else {
                 continue;
             };
-            if !layer.visible || layer.layer_type == LayerType::Group {
+            if layer.layer_type == LayerType::Group || !layers.is_selected(cel.layer_index, layer) {
                 continue;
             }
 
             let mut cel_target = vec![0; usize::from(cel.size.0) * usize::from(cel.size.1) * 4];
             self.load_image(cel.image_index, &mut cel_target).unwrap();
             let layer = &self.layers[cel.layer_index];
-
-            (cel.image_index, cel.layer_index, cel.origin, cel.size).hash(&mut hasher);
 
             let blend_fn = blend_mode_to_blend_fn(layer.blend_mode);
 
@@ -272,8 +347,7 @@ impl AsepriteFile<'_> {
                 }
             }
         }
-
-        Ok(hasher.finish())
+        Ok(())
     }
 
     /// Get image loader for a given image index
@@ -321,6 +395,7 @@ impl AsepriteFile<'_> {
         }
         Ok(())
     }
+    /// Return all slice chunks from the source file.
     pub fn slices(&self) -> &[SliceChunk<'_>] {
         &self.file.slices
     }
@@ -328,33 +403,50 @@ impl AsepriteFile<'_> {
 
 use thiserror::Error;
 
+/// Errors that can occur while building the high-level [`AsepriteFile`].
 #[derive(Error, Debug)]
 pub enum LoadSpriteError {
+    /// Parsing the binary `.aseprite` content failed.
     #[error("parsing failed {message}")]
-    Parse { message: String },
+    Parse {
+        /// Detailed parse failure description.
+        message: String,
+    },
+    /// A named tag lookup failed.
     #[error("missing tag: {0}")]
     MissingTag(String),
+    /// A named layer lookup failed.
     #[error("missing layer: {0}")]
     MissingLayer(String),
+    /// A frame index was outside available frame bounds.
     #[error("frame index out of range: {0}")]
     FrameIndexOutOfRange(usize),
 }
 
+/// Errors that can occur while decoding image pixel data.
 #[allow(missing_copy_implementations)]
 #[derive(Error, Debug)]
 pub enum LoadImageError {
+    /// The destination buffer is not large enough.
     #[error("target buffer too small")]
     TargetBufferTooSmall,
+    /// Indexed image decoding requires a palette, but none was present.
     #[error("missing palette")]
     MissingPalette,
+    /// The file uses an unsupported color depth.
     #[error("unsupported color depth")]
     UnsupportedColorDepth,
+    /// Zlib decompression failed.
     #[error("decompression failed")]
     DecompressError,
+    /// Pixel data length did not match the expected format.
     #[error("invalid image data")]
     InvalidImageData,
 }
 
+/// Decompress zlib-compressed image bytes into `target`.
+///
+/// The expected output size depends on color depth and dimensions.
 pub fn decompress(data: &[u8], target: &mut [u8]) -> Result<(), LoadImageError> {
     let mut decompressor = Decompress::new(true);
     match decompressor.decompress(data, target, flate2::FlushDecompress::Finish) {
@@ -432,7 +524,8 @@ fn test_combine() {
     let (width, height) = file.size();
     for (index, _) in file.frames().iter().enumerate() {
         let mut target = vec![0; usize::from(width * height) * 4];
-        let _ = file.combined_frame_image(index, &mut target).unwrap();
+        file.render_frame(index, &mut target, &LayerSelection::Visible)
+            .unwrap();
         let image = RgbaImage::from_raw(u32::from(width), u32::from(height), target).unwrap();
 
         let tmp = TempDir::with_prefix("aseprite-loader").unwrap();
@@ -440,6 +533,54 @@ fn test_combine() {
         let path = tmp.path().join(format!("combined_{}.png", index));
         image.save(path).unwrap();
     }
+}
+
+#[test]
+fn test_visible_layers_empty_produces_blank() {
+    let data = std::fs::read("./tests/layers.aseprite").unwrap();
+    let file = AsepriteFile::load(&data).unwrap();
+    let (width, height) = file.size();
+    let mut buf = vec![0u8; usize::from(width) * usize::from(height) * 4];
+    let sel = file.select_layers_by_name(&[]);
+    file.render_frame(0, &mut buf, &sel).unwrap();
+    assert!(
+        buf.iter().all(|&b| b == 0),
+        "empty layer list should produce a blank image"
+    );
+}
+
+#[test]
+fn test_visible_layers_single_differs_from_all() {
+    let data = std::fs::read("./tests/layers.aseprite").unwrap();
+    let file = AsepriteFile::load(&data).unwrap();
+
+    let visible_normal: Vec<&str> = file
+        .layers()
+        .iter()
+        .filter(|l| l.visible && l.layer_type != LayerType::Group)
+        .map(|l| l.name.as_str())
+        .collect();
+
+    assert!(
+        visible_normal.len() >= 2,
+        "layers.aseprite needs at least 2 visible layers for this test"
+    );
+
+    let (width, height) = file.size();
+    let buf_size = usize::from(width) * usize::from(height) * 4;
+
+    let mut buf_all = vec![0u8; buf_size];
+    file.render_frame(0, &mut buf_all, &LayerSelection::Visible)
+        .unwrap();
+
+    let sel = file.select_layers_by_name(&visible_normal[..1]);
+    let mut buf_one = vec![0u8; buf_size];
+    file.render_frame(0, &mut buf_one, &sel).unwrap();
+
+    assert_ne!(
+        buf_all, buf_one,
+        "single layer composite should differ from all-layers composite"
+    );
 }
 
 /// https://github.com/bikeshedder/aseprite-loader/issues/4
@@ -451,7 +592,8 @@ fn test_issue_4_1() {
     let (width, height) = file.size();
     let mut buf = vec![0; usize::from(width * height) * 4];
     for idx in 0..file.frames().len() {
-        let _ = file.combined_frame_image(idx, &mut buf).unwrap();
+        file.render_frame(idx, &mut buf, &LayerSelection::Visible)
+            .unwrap();
     }
 }
 
@@ -463,6 +605,7 @@ fn test_issue_4_2() {
     let (width, height) = file.size();
     let mut buf = vec![0; usize::from(width * height) * 4];
     for idx in 0..file.frames().len() {
-        let _ = file.combined_frame_image(idx, &mut buf).unwrap();
+        file.render_frame(idx, &mut buf, &LayerSelection::Visible)
+            .unwrap();
     }
 }

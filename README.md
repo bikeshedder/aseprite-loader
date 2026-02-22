@@ -10,6 +10,20 @@ Aseprite File Format (.ase/.aseprite) Specifications:
 
 <https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md>
 
+## Usage
+
+```rust,ignore
+use aseprite_loader::loader::{AsepriteFile, LayerSelection};
+
+let data = std::fs::read("sprite.aseprite")?;
+let file = AsepriteFile::load(&data)?;
+
+let (width, height) = file.size();
+let mut rgba = vec![0u8; usize::from(width) * usize::from(height) * 4];
+
+file.render_frame(0, &mut rgba, &LayerSelection::Visible)?;
+```
+
 ## License
 
 Licensed under either of
