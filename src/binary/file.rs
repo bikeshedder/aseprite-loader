@@ -1,4 +1,8 @@
+use std::iter::Peekable;
+
 use itertools::Itertools;
+
+use crate::binary::chunks::user_data::UserDataChunk;
 
 use super::{
     chunk::Chunk,
@@ -20,6 +24,8 @@ pub struct File<'a> {
     pub frames: Vec<Frame<'a>>,
     pub tags: Vec<Tag<'a>>,
     pub slices: Vec<SliceChunk<'a>>,
+    /// Optional user data associated with the sprite
+    pub user_data: Option<UserDataChunk<'a>>,
 }
 
 pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
@@ -35,23 +41,49 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
     let mut layers = Vec::<LayerChunk<'_>>::new();
     let mut tags = Vec::<Tag<'_>>::new();
     let mut slices = Vec::<SliceChunk<'_>>::new();
+    let mut user_data = None;
     for raw_frame in raw_file.frames {
         let mut cels = Vec::<CelChunk<'_>>::new();
-        for chunk in raw_frame.chunks {
+        let mut chunks = raw_frame.chunks.into_iter().peekable();
+        while let Some(chunk) = chunks.next() {
             match chunk {
-                Chunk::Palette0004(_) => {}
-                Chunk::Palette0011(_) => {}
-                Chunk::Layer(layer) => layers.push(layer),
-                Chunk::Cel(cel) => cels.push(cel),
+                // In Aseprite v1.3 a sprite has associated user data, to consider this case there
+                // is an User Data Chunk at the first frame after the Palette Chunk.
+                Chunk::Palette0004(_) | Chunk::Palette0011(_) | Chunk::Palette(_) => {
+                    if frames.is_empty() && user_data.is_none() {
+                        user_data = next_user_data(&mut chunks);
+                    }
+                }
+                Chunk::Layer(layer) => layers.push(LayerChunk {
+                    user_data: next_user_data(&mut chunks),
+                    ..layer
+                }),
+                Chunk::Cel(cel) => cels.push(CelChunk {
+                    user_data: next_user_data(&mut chunks),
+                    ..cel
+                }),
                 Chunk::CelExtra(_) => {}
                 Chunk::ColorProfile(_) => {}
                 Chunk::ExternalFiles(_) => {}
                 Chunk::Mask(_) => {}
                 Chunk::Path => {}
-                Chunk::Tags(tags_chunk) => tags.extend(tags_chunk.tags),
-                Chunk::Palette(_) => {}
+                Chunk::Tags(mut tags_chunk) => {
+                    // After a Tags chunk, there will be several user data chunks, one for each
+                    // tag, you should associate the user data in the same order as the tags
+                    // are in the Tags chunk
+                    for tag in &mut tags_chunk.tags {
+                        tag.user_data = next_user_data(&mut chunks);
+                        if tag.user_data.is_none() {
+                            break;
+                        }
+                    }
+                    tags.extend(tags_chunk.tags)
+                }
                 Chunk::UserData(_) => {}
-                Chunk::Slice(slice) => slices.push(slice),
+                Chunk::Slice(slice) => slices.push(SliceChunk {
+                    user_data: next_user_data(&mut chunks),
+                    ..slice
+                }),
                 Chunk::Tileset(_) => {}
                 Chunk::Unsupported(_) => {}
             }
@@ -89,7 +121,20 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
         frames,
         tags,
         slices,
+        user_data,
     })
+}
+
+/// Peeks ahead to see if the next chunk is a [`UserDataChunk`]. If it is, then the iterator is
+/// advanced, and the owned user data is returned.
+fn next_user_data<'a>(
+    iter: &mut Peekable<impl Iterator<Item = Chunk<'a>>>,
+) -> Option<UserDataChunk<'a>> {
+    let chunk = iter.next_if(|c| matches!(c, Chunk::UserData(_)))?;
+    let Chunk::UserData(user_data) = chunk else {
+        unreachable!()
+    };
+    Some(user_data)
 }
 
 #[test]
@@ -134,4 +179,38 @@ fn test_palette() {
             alpha: 255
         }
     );
+}
+
+#[test]
+fn test_user_data() {
+    let input = std::fs::read("./tests/user_data.aseprite").unwrap();
+    let file = parse_file(&input).unwrap();
+    assert_eq!(file.user_data.unwrap().text.unwrap(), "sprite_data");
+    assert_eq!(
+        file.layers[0].user_data.as_ref().unwrap().text.unwrap(),
+        "layer_data"
+    );
+    assert_eq!(
+        file.slices[0].user_data.as_ref().unwrap().text.unwrap(),
+        "slice_data"
+    );
+    assert_eq!(
+        file.frames[0].cels[0]
+            .as_ref()
+            .unwrap()
+            .user_data
+            .as_ref()
+            .unwrap()
+            .text
+            .unwrap(),
+        "cel_data"
+    );
+    for tag in file.tags {
+        let user_text = tag.user_data.unwrap().text.unwrap();
+        match tag.name {
+            "Tag 1" => assert_eq!(user_text, "tag_data_1"),
+            "Tag 2" => assert_eq!(user_text, "tag_data_2"),
+            _ => {}
+        };
+    }
 }

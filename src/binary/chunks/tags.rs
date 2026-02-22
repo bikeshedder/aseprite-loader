@@ -4,6 +4,7 @@ use nom::{bytes::complete::take, multi::count, Parser};
 use strum::FromRepr;
 
 use crate::binary::{
+    chunks::user_data::UserDataChunk,
     errors::{ParseError, ParseResult},
     scalars::{byte, parse_string, word, Byte, Word},
 };
@@ -22,6 +23,8 @@ pub struct Tag<'a> {
     #[deprecated]
     pub color: [u8; 3],
     pub name: &'a str,
+    /// An optional user data chunk associated with this tag.
+    pub user_data: Option<UserDataChunk<'a>>,
 }
 
 #[derive(FromRepr, Debug, Copy, Clone)]
@@ -70,6 +73,7 @@ pub fn parse_tag(input: &[u8]) -> ParseResult<'_, Tag<'_>> {
             animation_repeat,
             color: [color[0], color[1], color[2]],
             name,
+            user_data: None,
         },
     ))
 }
