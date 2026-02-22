@@ -50,41 +50,40 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
                 // In Aseprite v1.3 a sprite has associated user data, to consider this case there
                 // is an User Data Chunk at the first frame after the Palette Chunk.
                 Chunk::Palette0004(_) | Chunk::Palette0011(_) | Chunk::Palette(_) => {
-                    if user_data.is_none() {
+                    if frames.is_empty() && user_data.is_none() {
                         user_data = next_user_data(&mut chunks);
                     }
                 }
-                Chunk::Layer(mut layer) => {
-                    layer.user_data = next_user_data(&mut chunks);
-                    layers.push(layer)
-                }
-                Chunk::Cel(mut cel) => {
-                    cel.user_data = next_user_data(&mut chunks);
-                    cels.push(cel)
-                }
+                Chunk::Layer(layer) => layers.push(LayerChunk {
+                    user_data: next_user_data(&mut chunks),
+                    ..layer
+                }),
+                Chunk::Cel(cel) => cels.push(CelChunk {
+                    user_data: next_user_data(&mut chunks),
+                    ..cel
+                }),
                 Chunk::CelExtra(_) => {}
                 Chunk::ColorProfile(_) => {}
                 Chunk::ExternalFiles(_) => {}
                 Chunk::Mask(_) => {}
                 Chunk::Path => {}
                 Chunk::Tags(mut tags_chunk) => {
-                    // Tags will either be followed by a user data chunk for each tag, or no user
-                    // data chunks.
-                    if matches!(chunks.peek(), Some(&Chunk::UserData(_))) {
-                        // After a Tags chunk, there will be several user data chunks, one for each
-                        // tag, you should associate the user data in the same order as the tags
-                        // are in the Tags chunk
-                        for tag in &mut tags_chunk.tags {
-                            tag.user_data = next_user_data(&mut chunks);
+                    // After a Tags chunk, there will be several user data chunks, one for each
+                    // tag, you should associate the user data in the same order as the tags
+                    // are in the Tags chunk
+                    for tag in &mut tags_chunk.tags {
+                        tag.user_data = next_user_data(&mut chunks);
+                        if tag.user_data.is_none() {
+                            break;
                         }
                     }
                     tags.extend(tags_chunk.tags)
                 }
                 Chunk::UserData(_) => {}
-                Chunk::Slice(mut slice) => {
-                    slice.user_data = next_user_data(&mut chunks);
-                    slices.push(slice)
-                }
+                Chunk::Slice(slice) => slices.push(SliceChunk {
+                    user_data: next_user_data(&mut chunks),
+                    ..slice
+                }),
                 Chunk::Tileset(_) => {}
                 Chunk::Unsupported(_) => {}
             }
@@ -131,13 +130,11 @@ pub fn parse_file(input: &[u8]) -> Result<File<'_>, nom::Err<ParseError<'_>>> {
 fn next_user_data<'a>(
     iter: &mut Peekable<impl Iterator<Item = Chunk<'a>>>,
 ) -> Option<UserDataChunk<'a>> {
-    matches!(iter.peek(), Some(&Chunk::UserData(_))).then(|| {
-        let Some(Chunk::UserData(user_data)) = iter.next() else {
-            // This is the value we just peeked at, so we know its shape.
-            unreachable!();
-        };
-        user_data
-    })
+    let chunk = iter.next_if(|c| matches!(c, Chunk::UserData(_)))?;
+    let Chunk::UserData(user_data) = chunk else {
+        unreachable!()
+    };
+    Some(user_data)
 }
 
 #[test]
