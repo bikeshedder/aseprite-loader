@@ -3,6 +3,7 @@ use nom::{bytes::complete::take, combinator::cond, Parser};
 
 use crate::binary::{
     blend_mode::BlendMode,
+    chunks::user_data::UserDataChunk,
     errors::ParseResult,
     scalars::{byte, dword, parse_string, word, Byte, Dword, Word},
 };
@@ -16,6 +17,8 @@ pub struct LayerChunk<'a> {
     pub opacity: Byte,
     pub name: &'a str,
     pub tileset_index: Option<Dword>,
+    /// An optional user data chunk following this cel chunk.
+    pub user_data: Option<UserDataChunk<'a>>,
 }
 
 bitflags! {
@@ -75,6 +78,7 @@ pub fn parse_layer_chunk(input: &[u8]) -> ParseResult<'_, LayerChunk<'_>> {
             opacity,
             name,
             tileset_index,
+            user_data: None,
         },
     ))
 }

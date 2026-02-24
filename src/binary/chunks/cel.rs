@@ -2,6 +2,7 @@ use nom::bytes::complete::take;
 use strum::FromRepr;
 
 use crate::binary::{
+    chunks::user_data::UserDataChunk,
     errors::ParseResult,
     image::Image,
     scalars::{byte, dword, short, word, Byte, Dword, Short, Word},
@@ -21,6 +22,8 @@ pub struct CelChunk<'a> {
     pub z_index: Short,
     /// Cel Data
     pub content: CelContent<'a>,
+    /// An optional user data chunk following this cel chunk.
+    pub user_data: Option<UserDataChunk<'a>>,
 }
 
 #[derive(Debug, FromRepr)]
@@ -143,6 +146,7 @@ pub fn parse_cel_chunk(input: &[u8]) -> ParseResult<'_, CelChunk<'_>> {
             opacity,
             z_index,
             content,
+            user_data: None,
         },
     ))
 }
