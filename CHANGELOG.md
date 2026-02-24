@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add support for parsing `UserData` chunks
+
 ## [0.4.2] - 2026-02-19
 
 - Add `AsepriteFile::render_frame` method which supports overriding thei
@@ -109,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[unreleased]: https://github.com/bikeshedder/aseprite-loader/compare/v0.4.1...HEAD
+[unreleased]: https://github.com/bikeshedder/aseprite-loader/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/bikeshedder/aseprite-loader/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/bikeshedder/aseprite-loader/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/bikeshedder/aseprite-loader/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/bikeshedder/aseprite-loader/compare/v0.3.3...v0.3.4
